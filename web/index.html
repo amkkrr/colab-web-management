@@ -33,6 +33,16 @@
       </div>
     </section>
 
+    <section class="instance-mode-callout" id="instance-mode-callout" data-mode="drive-only" hidden aria-live="polite">
+      <div class="instance-mode-callout-body">
+        <span class="instance-mode-pill" id="instance-mode-pill">无 HTTPS 隧道</span>
+        <span class="instance-mode-text" id="instance-mode-text"></span>
+      </div>
+      <div class="instance-mode-callout-actions">
+        <button class="ghost-button" type="button" id="banner-rebuild-tunnel" hidden>通过云盘重建隧道</button>
+      </div>
+    </section>
+
     <div class="filters" role="toolbar" focusgroup="toolbar wrap" aria-label="监控与显示控制">
       <div class="toolbar-group">
         <div class="control-set" data-seg role="group" aria-label="数据源模式">
@@ -112,7 +122,6 @@
         <span id="banner-message"></span>
       </div>
       <div class="status-banner-actions">
-        <button class="ghost-button" type="button" id="banner-rebuild-tunnel" hidden>通过云盘重建隧道</button>
         <button class="ghost-button" type="button" id="banner-retry">重试连接</button>
         <button class="link-button" type="button" id="banner-demo">查看演示样本</button>
       </div>
