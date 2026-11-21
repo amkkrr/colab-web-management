@@ -269,6 +269,17 @@ def generate_injected_cell(
     }
 
 
+def backup_notebook_bytes(nb_name: str, raw_bytes: bytes, backup_dir: Path) -> Path:
+    """Save a pure-local timestamped backup copy of a notebook before modifying it."""
+    safe_backup_dir = assert_not_in_cloud_drive(backup_dir)
+    safe_backup_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    stem = Path(nb_name).stem or "notebook"
+    dst = safe_backup_dir / f"{stem}.{stamp}.bak.ipynb"
+    dst.write_bytes(raw_bytes)
+    return dst
+
+
 def _backup_notebook(nb_path: Path, backup_dir: Path) -> Path:
     safe_backup_dir = assert_not_in_cloud_drive(backup_dir)
     safe_backup_dir.mkdir(parents=True, exist_ok=True)
@@ -276,6 +287,68 @@ def _backup_notebook(nb_path: Path, backup_dir: Path) -> Path:
     dst = safe_backup_dir / f"{nb_path.stem}.{stamp}.bak.ipynb"
     shutil.copy2(nb_path, dst)
     return dst
+
+
+def inject_notebook_dict(
+    nb: dict[str, Any],
+    *,
+    nb_name: str,
+    path_label: str,
+    monitor_drive_rel: str,
+    dry_run: bool = True,
+    project: str | None = None,
+    label: str | None = None,
+    idle_timeout_minutes: int = 60,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Shared idempotent injection core operating on a parsed notebook dict."""
+    if not isinstance(nb, dict) or not isinstance(nb.get("cells"), list):
+        raise ValueError("Invalid .ipynb JSON structure")
+
+    profile = detect_notebook_profile(nb)
+    new_cell = generate_injected_cell(
+        Path(nb_name),
+        profile,
+        project=project,
+        label=label,
+        idle_timeout_minutes=idle_timeout_minutes,
+        monitor_drive_rel=monitor_drive_rel,
+    )
+    cells_before = len(nb["cells"])
+    action = "update" if profile["injected"] else "insert"
+    target_idx = profile["injected_indices"][0] if profile["injected"] else profile["insert_index"]
+    cells_after = cells_before - max(0, len(profile["injected_indices"]) - 1) if profile["injected"] else cells_before + 1
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "dry_run": dry_run,
+        "action": action,
+        "path": path_label,
+        "mode": profile["detected_mode"],
+        "insert_index": target_idx,
+        "cells_before": cells_before,
+        "cells_after": cells_after,
+        "version": INJECT_VERSION,
+        "cell_source": "".join(new_cell["source"]),
+        "backup_path": None,
+        "agent_synced_path": None,
+    }
+    updated_nb = dict(nb)
+    orig_cells = list(nb["cells"])
+    if profile["injected"]:
+        new_cells: list[Any] = []
+        replaced = False
+        for idx, c in enumerate(orig_cells):
+            if idx in profile["injected_indices"]:
+                if not replaced:
+                    new_cells.append(new_cell)
+                    replaced = True
+                continue
+            new_cells.append(c)
+        updated_nb["cells"] = new_cells
+    else:
+        orig_cells.insert(target_idx, new_cell)
+        updated_nb["cells"] = orig_cells
+    return result, updated_nb
 
 
 def inject_notebook(
@@ -295,63 +368,54 @@ def inject_notebook(
         raise FileNotFoundError(f"Notebook not found: {resolved}")
 
     nb = json.loads(resolved.read_text(encoding="utf-8"))
-    if not isinstance(nb, dict) or not isinstance(nb.get("cells"), list):
-        raise ValueError("Invalid .ipynb JSON structure")
-
-    profile = detect_notebook_profile(nb)
     monitor_rel = _infer_drive_rel_path(monitor_root)
-    new_cell = generate_injected_cell(
-        resolved,
-        profile,
+    result, updated_nb = inject_notebook_dict(
+        nb,
+        nb_name=resolved.name,
+        path_label=str(resolved),
+        monitor_drive_rel=monitor_rel,
+        dry_run=dry_run,
         project=project,
         label=label,
         idle_timeout_minutes=idle_timeout_minutes,
-        monitor_drive_rel=monitor_rel,
     )
-    cells_before = len(nb["cells"])
-    action = "update" if profile["injected"] else "insert"
-    target_idx = profile["injected_indices"][0] if profile["injected"] else profile["insert_index"]
-    cells_after = cells_before - max(0, len(profile["injected_indices"]) - 1) if profile["injected"] else cells_before + 1
-
-    result: dict[str, Any] = {
-        "ok": True,
-        "dry_run": dry_run,
-        "action": action,
-        "path": str(resolved),
-        "mode": profile["detected_mode"],
-        "insert_index": target_idx,
-        "cells_before": cells_before,
-        "cells_after": cells_after,
-        "version": INJECT_VERSION,
-        "cell_source": "".join(new_cell["source"]),
-        "backup_path": None,
-        "agent_synced_path": None,
-    }
     if dry_run:
         return result
 
     backup_path = _backup_notebook(resolved, backup_dir)
     synced_agent = sync_agent_to_drive(agent_src_path, monitor_root)
-
-    if profile["injected"]:
-        # Replace first injected cell in place and strip any accidental duplicates
-        new_cells: list[Any] = []
-        replaced = False
-        for idx, c in enumerate(nb["cells"]):
-            if idx in profile["injected_indices"]:
-                if not replaced:
-                    new_cells.append(new_cell)
-                    replaced = True
-                continue
-            new_cells.append(c)
-        nb["cells"] = new_cells
-    else:
-        nb["cells"].insert(target_idx, new_cell)
-
-    _atomic_write_text(resolved, json.dumps(nb, ensure_ascii=False, indent=1) + "\n")
+    _atomic_write_text(resolved, json.dumps(updated_nb, ensure_ascii=False, indent=1) + "\n")
     result["backup_path"] = str(backup_path)
     result["agent_synced_path"] = str(synced_agent)
     return result
+
+
+def remove_injection_dict(
+    nb: dict[str, Any],
+    *,
+    path_label: str,
+    dry_run: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Shared reversible removal core operating on a parsed notebook dict."""
+    if not isinstance(nb, dict) or not isinstance(nb.get("cells"), list):
+        raise ValueError("Invalid .ipynb JSON structure")
+
+    profile = detect_notebook_profile(nb)
+    removed_cnt = len(profile["injected_indices"])
+    cells_before = len(nb["cells"])
+
+    result: dict[str, Any] = {
+        "ok": True,
+        "dry_run": dry_run,
+        "path": path_label,
+        "removed_count": removed_cnt,
+        "cells_before": cells_before,
+        "cells_after": cells_before - removed_cnt,
+        "backup_path": None,
+    }
+    updated_nb = dict(nb)
+    updated_nb["cells"] = [c for idx, c in enumerate(nb["cells"]) if idx not in profile["injected_indices"]]
+    return result, updated_nb
 
 
 def remove_injection(
@@ -366,28 +430,11 @@ def remove_injection(
         raise FileNotFoundError(f"Notebook not found: {resolved}")
 
     nb = json.loads(resolved.read_text(encoding="utf-8"))
-    if not isinstance(nb, dict) or not isinstance(nb.get("cells"), list):
-        raise ValueError("Invalid .ipynb JSON structure")
-
-    profile = detect_notebook_profile(nb)
-    removed_cnt = len(profile["injected_indices"])
-    cells_before = len(nb["cells"])
-
-    result: dict[str, Any] = {
-        "ok": True,
-        "dry_run": dry_run,
-        "path": str(resolved),
-        "removed_count": removed_cnt,
-        "cells_before": cells_before,
-        "cells_after": cells_before - removed_cnt,
-        "backup_path": None,
-    }
-    if dry_run or removed_cnt == 0:
+    result, updated_nb = remove_injection_dict(nb, path_label=str(resolved), dry_run=dry_run)
+    if dry_run or result["removed_count"] == 0:
         return result
 
     backup_path = _backup_notebook(resolved, backup_dir)
-    keep = [c for idx, c in enumerate(nb["cells"]) if idx not in profile["injected_indices"]]
-    nb["cells"] = keep
-    _atomic_write_text(resolved, json.dumps(nb, ensure_ascii=False, indent=1) + "\n")
+    _atomic_write_text(resolved, json.dumps(updated_nb, ensure_ascii=False, indent=1) + "\n")
     result["backup_path"] = str(backup_path)
     return result

@@ -48,14 +48,50 @@ python3 h3_cli_monitor.py --keepalive
 python3 h3_cli_monitor.py --shutdown
 ```
 
+## 无头一键开机与纯 OAuth2 Drive API（VPS + `tmpfs` 纯内存凭据）
+
+在无图形界面、也未挂载 FUSE / `rclone` 云盘的 VPS 上部署时，服务端可通过 `google-colab-cli`（建议固定 `0.7.5` 以避免无桌面 Linux 下的 Keyring 报错）+ 纯标准库 Google Drive v3 OAuth2 客户端实现**无浏览器一键冷开机与静默监控**：
+
+- **零 FUSE / 零 `rclone`**：`control/drive_api.py` 直接走 Drive v3 HTTP API 同步 `_colab_monitor/{instances,secrets,acks}` 与推送命令；Colab VM 侧通过 `colab exec` 的 **stdin**（不经命令行参数）将凭据写入 VM 内存盘 `/dev/shm/colab_gdrive_oauth.json`（`0600`），以 `OAuthDriveBackend` 上线并暴露 `get_drive_service()`。
+- **Tailscale 内网专用监听**：
+
+```bash
+python3 server.py --host "$(tailscale ip -4)" --port 8765 --state-dir /var/lib/colab-web-management --allow-remote --no-open
+```
+
+- **凭据文件格式（`gdrive_oauth.env`，严禁提交至仓库）**：
+
+```ini
+GDRIVE_CLIENT_ID=<your-oauth-client-id>
+GDRIVE_CLIENT_SECRET=<your-oauth-client-secret>
+GDRIVE_REFRESH_TOKEN=<your-refresh-token>
+```
+
+> 建议在 Google Cloud Console → **OAuth consent screen** 将应用状态切换为 **In production**，否则 Testing 模式下签发的 `refresh_token` 将在 7 天后失效（`invalid_grant`）。
+
+### 将凭据仅保存在服务端 `tmpfs` 内存盘（重启恢复备忘）
+
+为避免在 VPS 物理磁盘留下明文 OAuth2 凭据，建议将 `COLAB_GDRIVE_OAUTH_ENV` 指向 `/run/colab-web-management/gdrive_oauth.env`（`tmpfs` 纯内存文件系统）：
+
+- **`systemctl restart` 不丢失**，仅**VPS 整机重启**后 `/run` 会自动清空；
+- 若重启后管控台页面显示 **「OAuth2 Drive：未配置」**，从本机执行以下一行命令将凭据重新推入 VPS 内存盘并重启服务即可恢复：
+
+```bash
+ssh <vps-host> 'mkdir -p /run/colab-web-management && chmod 700 /run/colab-web-management && cat > /run/colab-web-management/gdrive_oauth.env && chmod 600 /run/colab-web-management/gdrive_oauth.env && systemctl restart colab-web-management.service' < /path/to/gdrive_oauth.env
+```
+
 ## 环境变量（可选）
 
 | 环境变量 | 说明 |
 |---|---|
-| `COLAB_MONITOR_ROOT` | 指定云盘 `_colab_monitor` 共享交换目录路径 |
+| `COLAB_MONITOR_ROOT` | 指定云盘 `_colab_monitor` 共享交换目录（或纯 OAuth2 模式下的本地缓存目录）路径 |
 | `COLAB_MONITOR_EP_FILE` | 指定默认 Legacy `active_endpoint.json` 路径 |
 | `COLAB_MONITOR_DRIVE_SUBDIR` | 注入单元格时默认使用的 Google Drive 相对目录（默认自动从挂载路径推断） |
 | `H3_MONITOR_STATE_DIR` | 指定纯本地 SQLite 与配置目录（严禁指向云盘同步目录） |
+| `COLAB_GDRIVE_OAUTH_ENV` | 指定包含 Drive OAuth2 凭据的 `.env` 文件路径（推荐指向 `/run/...` `tmpfs` 内存盘） |
+| `COLAB_DRIVE_MONITOR_PATH` | 指定远端 Google Drive 中的 `_colab_monitor` 相对路径（默认 `_colab_monitor`） |
+| `COLAB_CLI_BIN` | 显式指定 `google-colab-cli` (`colab`) 可执行文件路径 |
+| `GDRIVE_CLIENT_ID` / `GDRIVE_CLIENT_SECRET` / `GDRIVE_REFRESH_TOKEN` | 亦可直接通过环境变量注入纯 OAuth2 Drive 凭据 |
 
 ## 开发与安全校验
 

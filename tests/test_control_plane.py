@@ -51,10 +51,18 @@ def _fake_hw(gpu_name: str | None = "NVIDIA L4") -> dict:
         }
     else:
         gpu = {"available": False, "count": 0}
+    ram_total = 53.0 if gpu_name else 12.7
+    ram_used = 14.0 if gpu_name else 3.2
     return {
         "gpu": gpu,
         "cpu": {"cores_logical": 8, "util_pct": 20.0, "load_avg_1m": 1.2},
-        "ram": {"used_gib": 14.0, "total_gib": 53.0, "pct": 26.4, "cgroup_limit_gib": 53.0, "oom_kill_count": 0},
+        "ram": {
+            "used_gib": ram_used,
+            "total_gib": ram_total,
+            "pct": round(ram_used * 100.0 / ram_total, 1),
+            "cgroup_limit_gib": ram_total,
+            "oom_kill_count": 0,
+        },
         "disk": {"mount": "/", "used_gib": 45.0, "free_gib": 67.6, "total_gib": 112.6, "pct": 40.0},
     }
 

@@ -50,4 +50,5 @@ ref_inputs/
 credentials*.json
 *.pem
 *.key
+*.local.md
 privacy_denylist.txt
