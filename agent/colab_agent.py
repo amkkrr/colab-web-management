@@ -24,6 +24,7 @@ import secrets
 import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 import urllib.error
@@ -1485,7 +1486,7 @@ class ColabAgent:
             "comfy_temp": [Path("/content/ComfyUI/temp")],
             "pip_cache": [Path("/root/.cache/pip")],
             "hf_incomplete": [Path.home() / ".cache" / "huggingface"],
-            "agent_scratch": list(self._scratch_dirs) + list(Path("/tmp").glob("colab_agent_*")),
+            "agent_scratch": list(self._scratch_dirs) + list(Path(tempfile.gettempdir()).glob("colab_agent_*")),
         }
         targets = params.get("targets")
         dry_run = bool(params.get("dry_run", True))

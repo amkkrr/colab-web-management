@@ -6,8 +6,10 @@ useDefault = true
 [[rules]]
 id = "colab-quick-tunnel-url"
 description = "Real Cloudflare TryCloudflare quick tunnel URL"
-regex = '''https://(?!demo-|example-)[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+\.trycloudflare\.com'''
+regex = '''https://[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+\.trycloudflare\.com'''
 tags = ["tunnel", "privacy"]
+  [[rules.allowlists]]
+  regexes = ['''https://(demo|example)-''']
 
 [[rules]]
 id = "local-macos-or-cloud-path"

@@ -226,7 +226,7 @@ class InstanceRegistry:
 
     def _build_legacy_instance(self, ep_path: Path, now_ts: float, output_limit: int = 12) -> dict[str, Any]:
         snap = fetch_snapshot(ep_path, output_limit=output_limit, include_details=True, timeout=min(5.0, max(2.5, self.tunnel_timeout)))
-        key_hash = hashlib.sha1(str(ep_path.resolve()).encode("utf-8")).hexdigest()[:8]
+        key_hash = hashlib.sha256(str(ep_path.resolve()).encode("utf-8")).hexdigest()[:8]
         folder_slug = re.sub(r"[^a-z0-9]+", "_", ep_path.parent.name.lower()).strip("_") or "legacy"
         iid = f"legacy_{folder_slug}_{key_hash}"
 
