@@ -19,13 +19,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from agent.colab_agent import ColabAgent, FuseDriveBackend  # noqa: E402
+from agent.colab_agent import ColabAgent, FuseDriveBackend, collect_host_metrics  # noqa: E402
 from control.collector import LocalControlStorage, MultiInstanceUptimeTracker, run_drive_gc  # noqa: E402
 from control.protocol import (  # noqa: E402
     assert_not_in_cloud_drive,
     build_action_envelope,
     compute_liveness,
     utc_now_iso,
+    v2_to_v1_snapshot,
     validate_upstream_url,
 )
 from control.registry import InstanceRegistry  # noqa: E402
@@ -461,6 +462,40 @@ class ControlPlaneAcceptanceTests(unittest.TestCase):
             )
             self.assertNotEqual(proc_refuse.returncode, 0)
             self.assertIn("--yes", proc_refuse.stderr)
+
+    def test_cpu_metrics_collection_and_v1_snapshot_passthrough(self) -> None:
+        m1 = collect_host_metrics("/")
+        time.sleep(0.03)
+        m2 = collect_host_metrics("/")
+        for m in (m1, m2):
+            cpu = m.get("cpu") or {}
+            self.assertGreaterEqual(int(cpu.get("cores_logical") or 0), 1)
+            self.assertGreaterEqual(float(cpu.get("util_pct", -1)), 0.0)
+            self.assertLessEqual(float(cpu.get("util_pct", 101)), 100.0)
+            self.assertGreaterEqual(float(cpu.get("load_avg_1m", -1)), 0.0)
+
+        v1_snap = v2_to_v1_snapshot(
+            {
+                "instance_id": "inst_cpu_drive_only",
+                "liveness_state": "ONLINE_DRIVE_ONLY",
+                "active_channel": "drive",
+                "run_mode": "offline_batch",
+                "tunnel": {"enabled": False, "healthy": False, "base_url": ""},
+                "lifecycle": {"idle_seconds": 5, "idle_timeout_minutes": 0},
+                "hardware": {
+                    "gpu": {"available": False, "count": 0},
+                    "cpu": {"cores_logical": 8, "util_pct": 64.5, "load_avg_1m": 4.2},
+                    "ram": {"used_gib": 18.0, "total_gib": 51.0, "pct": 35.3},
+                    "disk": {"mount": "/", "used_gib": 45.0, "free_gib": 60.0, "total_gib": 105.0, "pct": 42.9},
+                    "drive": {"mode": "oauth_silent", "healthy": True},
+                },
+                "workload": {"running": 1, "queued": 2, "succeeded": 0, "failed": 0},
+            }
+        )
+        self.assertTrue(v1_snap["online"])
+        self.assertEqual(v1_snap["base_url"], "")
+        self.assertEqual(v1_snap["metrics"]["cpu"]["cores_logical"], 8)
+        self.assertEqual(v1_snap["metrics"]["cpu"]["util_pct"], 64.5)
 
     def test_notebook_launcher_and_idempotent_safe_injector(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

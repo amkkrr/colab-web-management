@@ -365,6 +365,7 @@ def v2_to_v1_snapshot(
     lc = inst.get("lifecycle") or {}
     hw = inst.get("hardware") or {}
     gpu = hw.get("gpu") or {}
+    cpu = hw.get("cpu") or {}
     ram = hw.get("ram") or {}
     disk = hw.get("disk") or {}
     wl = inst.get("workload") or {}
@@ -392,6 +393,7 @@ def v2_to_v1_snapshot(
     v1_metrics = (
         {
             "gpu": v1_gpu,
+            "cpu": dict(cpu) if cpu else None,
             "ram": ram,
             "disk": disk,
             "jobs": {

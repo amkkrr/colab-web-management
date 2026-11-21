@@ -453,6 +453,42 @@ def collect_gpu_metrics() -> dict[str, Any]:
         return {"available": False, "count": 0}
 
 
+_PROC_STAT_LOCK = threading.Lock()
+_PREV_PROC_STAT: tuple[int, int] | None = None
+
+
+def _sample_proc_stat_cpu_pct() -> float | None:
+    """Compute interval CPU utilization (%) from Linux /proc/stat jiffies delta."""
+    global _PREV_PROC_STAT
+    stat_path = Path("/proc/stat")
+    if not stat_path.is_file():
+        return None
+    try:
+        first_line = stat_path.read_text(encoding="utf-8", errors="ignore").splitlines()[0]
+    except (OSError, IndexError):
+        return None
+    parts = first_line.split()
+    if len(parts) < 5 or parts[0] != "cpu":
+        return None
+    try:
+        vals = [int(x) for x in parts[1:]]
+    except ValueError:
+        return None
+    total = sum(vals)
+    idle = vals[3] + (vals[4] if len(vals) > 4 else 0)
+    with _PROC_STAT_LOCK:
+        prev = _PREV_PROC_STAT
+        _PREV_PROC_STAT = (total, idle)
+    if prev is None:
+        return None
+    dt = total - prev[0]
+    di = idle - prev[1]
+    if dt <= 0:
+        return None
+    busy_pct = (dt - max(0, di)) * 100.0 / dt
+    return round(max(0.0, min(100.0, busy_pct)), 1)
+
+
 def collect_host_metrics(disk_mount: str = "/") -> dict[str, Any]:
     """Collect CPU, RAM, and Disk metrics using stdlib + /proc (Linux) with safe cross-platform fallbacks."""
     cores = os.cpu_count() or 1
@@ -460,7 +496,8 @@ def collect_host_metrics(disk_mount: str = "/") -> dict[str, Any]:
         load_1m = round(os.getloadavg()[0], 2)
     except (AttributeError, OSError):
         load_1m = 0.0
-    cpu_pct = round(min(100.0, (load_1m / max(1, cores)) * 100.0), 1)
+    sampled_cpu = _sample_proc_stat_cpu_pct()
+    cpu_pct = sampled_cpu if sampled_cpu is not None else round(min(100.0, (load_1m / max(1, cores)) * 100.0), 1)
 
     ram_total_gib = 0.0
     ram_used_gib = 0.0
