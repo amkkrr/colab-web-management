@@ -644,6 +644,7 @@
               power_draw_w: 64.2
             },
             ram: { used_gib: 18.4, total_gib: 53.0, pct: 34.7 },
+            cpu: { cores_logical: 12, util_pct: 42.5, load_avg_1m: 3.12 },
             disk: { used_gib: 52.4, free_gib: 60.2, total_gib: 112.6, pct: 46.5 },
             drive: { mode: "oauth_silent", healthy: true, latency_ms: 145 }
           },
@@ -712,6 +713,7 @@
               power_draw_w: 51.0
             },
             ram: { used_gib: 8.6, total_gib: 12.7, pct: 67.7 },
+            cpu: { cores_logical: 8, util_pct: 68.4, load_avg_1m: 5.42 },
             disk: { used_gib: 34.1, free_gib: 44.1, total_gib: 78.2, pct: 43.6 },
             drive: { mode: "fuse", healthy: true, latency_ms: 420 }
           },
@@ -1275,6 +1277,12 @@
     }
   }
 
+  function resolveCpuMetrics(snap) {
+    if (!snap || !snap.online) return null;
+    const rawCpu = snap.metrics?.cpu || appState.currentV2Instance?.hardware?.cpu || null;
+    return rawCpu && (rawCpu.cores_logical || rawCpu.util_pct !== undefined) ? rawCpu : null;
+  }
+
   function renderKpis(snap) {
     const h = snap.online ? snap.health : null;
     const m = snap.online ? snap.metrics : null;
@@ -1303,8 +1311,11 @@
         : (snap.online ? "缺少 /health 数据" : "实例离线，无法获取空闲计时");
     }
 
+    const gpuLabelEl = document.getElementById("kpi-gpu-label");
     const gpu = m && m.gpu ? m.gpu : null;
+    const cpu = resolveCpuMetrics(snap);
     if (gpu && gpu.available) {
+      if (gpuLabelEl) gpuLabelEl.textContent = "GPU 核心利用率";
       setKpiValue("kpi-gpu-util", formatNum(gpu.util_gpu_pct, 0), "%");
       document.getElementById("kpi-gpu-help").textContent =
         `${gpu.name || "GPU"} · 温度 ${gpu.temp_c ?? "—"}°C · 功耗 ${gpu.power_w ?? "—"}W`;
@@ -1312,7 +1323,15 @@
       setKpiValue("kpi-vram-pct", formatNum(gpu.vram_pct, 1), "%");
       document.getElementById("kpi-vram-help").textContent =
         `${integerFmt.format(gpu.vram_used_mib ?? 0)} / ${integerFmt.format(gpu.vram_total_mib ?? 0)} MiB`;
+    } else if (snap.online && cpu) {
+      if (gpuLabelEl) gpuLabelEl.textContent = "CPU 利用率";
+      setKpiValue("kpi-gpu-util", formatNum(cpu.util_pct, 1), "%");
+      document.getElementById("kpi-gpu-help").textContent =
+        `${cpu.cores_logical ?? "—"} vCPU · 1m 负载 ${formatNum(cpu.load_avg_1m, 2)} · CPU Only 实例`;
+      setKpiValue("kpi-vram-pct", "—");
+      document.getElementById("kpi-vram-help").textContent = "CPU Only 实例（无独立 GPU）";
     } else {
+      if (gpuLabelEl) gpuLabelEl.textContent = "GPU 核心利用率";
       setKpiValue("kpi-gpu-util", "—");
       document.getElementById("kpi-gpu-help").textContent = snap.online
         ? "等待或未启用 /v1/metrics"
@@ -1352,6 +1371,7 @@
     const h = snap.online ? snap.health : null;
     const m = snap.online ? snap.metrics : null;
     const gpu = m && m.gpu && m.gpu.available ? m.gpu : null;
+    const cpu = resolveCpuMetrics(snap);
     const ram = m && m.ram ? m.ram : null;
     const disk = m && m.disk ? m.disk : null;
 
@@ -1376,6 +1396,13 @@
         pct: gpu ? Number(gpu.vram_pct) : null,
         text: gpu
           ? `${integerFmt.format(gpu.vram_used_mib)} / ${integerFmt.format(gpu.vram_total_mib)} MiB (${formatNum(gpu.vram_pct, 1)}%)`
+          : "—"
+      },
+      {
+        name: "CPU 利用率",
+        pct: cpu ? Number(cpu.util_pct) : null,
+        text: cpu
+          ? `${formatNum(cpu.util_pct, 1)}% (${cpu.cores_logical ?? "—"} vCPU · 负载 ${formatNum(cpu.load_avg_1m, 2)})`
           : "—"
       },
       {
@@ -1417,6 +1444,7 @@
       ["ComfyUI 存活", h ? String(h.comfy_alive) : (isShutdownOffline(snap) ? "已关机" : "—")],
       ["量化档位 (dit_tier)", h?.dit_tier ?? snap.endpoint_meta?.dit_tier ?? "—"],
       ["云盘模式 (gdrive_mode)", h?.gdrive_mode ?? "—"],
+      ["CPU 规格 / 负载", cpu ? `${cpu.cores_logical ?? "—"} vCPU · 1m 负载 ${formatNum(cpu.load_avg_1m, 2)}` : "—"],
       ["GPU 型号", gpu?.name ?? "—"],
       ["GPU 温度 / 功耗", gpu ? `${gpu.temp_c ?? "—"}°C / ${gpu.power_w ?? "—"}W` : "—"],
       ["默认尺寸", snap.endpoint_meta?.default_size ?? "—"]
@@ -1437,6 +1465,7 @@
       ["gpu.util_gpu_pct", "/v1/metrics", gpu ? `${gpu.util_gpu_pct}%` : "—"],
       ["gpu.vram", "/v1/metrics", gpu ? `${gpu.vram_used_mib} / ${gpu.vram_total_mib} MiB` : "—"],
       ["gpu.temp_c / power_w", "/v1/metrics", gpu ? `${gpu.temp_c}°C / ${gpu.power_w}W` : "—"],
+      ["cpu", "/v2/hardware", cpu ? `${formatNum(cpu.util_pct, 1)}% (${cpu.cores_logical ?? "—"} vCPU, load1m ${formatNum(cpu.load_avg_1m, 2)})` : "—"],
       ["ram", "/v1/metrics", ram ? `${ram.used_gib} / ${ram.total_gib} GiB (${ram.pct}%)` : "—"],
       ["disk", "/v1/metrics", disk ? `${disk.used_gib} / ${disk.total_gib} GiB (free ${disk.free_gib} GiB)` : "—"]
     ];
@@ -3692,6 +3721,7 @@
         cloned.health.idle_timeout_minutes = curDemo.lifecycle.idle_timeout_minutes;
         cloned.health.active_jobs = curDemo.workload.running;
         cloned.metrics.gpu = { ...curDemo.hardware.gpu, power_w: curDemo.hardware.gpu.power_draw_w };
+        cloned.metrics.cpu = curDemo.hardware.cpu || null;
         cloned.metrics.ram = curDemo.hardware.ram;
         cloned.metrics.disk = curDemo.hardware.disk;
         cloned.metrics.jobs = {
