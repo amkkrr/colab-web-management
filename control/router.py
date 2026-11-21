@@ -65,11 +65,13 @@ class ActionRouter:
         *,
         monitor_root: Path,
         storage: Any | None = None,
+        drive_client: Any | None = None,
         ack_timeout_sec: float = DEFAULT_ACK_TIMEOUT_SEC,
     ) -> None:
         self.registry = registry
         self.monitor_root = monitor_root.resolve()
         self.storage = storage
+        self.drive_client = drive_client
         self.ack_timeout_sec = float(ack_timeout_sec)
         self._lock = threading.RLock()
         self._commands: dict[str, dict[str, Any]] = {}
@@ -114,6 +116,19 @@ class ActionRouter:
         cmd_id = envelope["cmd_id"]
         cmd_path = self.monitor_root / "commands" / iid / f"{cmd_id}.json"
         atomic_write_json(cmd_path, envelope)
+        if self.drive_client is not None:
+            try:
+                self.drive_client.push_command_json(iid, cmd_id, envelope)
+            except Exception as exc:
+                return HTTPStatus.BAD_GATEWAY, {
+                    "ok": False,
+                    "cmd_id": cmd_id,
+                    "instance_id": iid,
+                    "action": envelope["action"],
+                    "channel": "drive",
+                    "status": "drive_push_failed",
+                    "message": f"推送命令到 Google Drive 信箱失败：{exc}",
+                }
         msg = (
             f"隧道不可达（{fallback_reason}），已使用相同 cmd_id 自动降级写入云盘信箱等待实例执行。"
             if fallback_reason
@@ -323,6 +338,13 @@ class ActionRouter:
         updated = 0
         with self._lock:
             pending = [dict(c) for c in self._commands.values() if c.get("status") in ("queued", "accepted", "running")]
+
+        if self.drive_client is not None and pending:
+            try:
+                targets = [(r["instance_id"], r["cmd_id"]) for r in pending]
+                self.drive_client.sync_mailbox_to_local(self.monitor_root, pending_ack_targets=targets)
+            except Exception:
+                pass
 
         for rec in pending:
             iid = rec["instance_id"]

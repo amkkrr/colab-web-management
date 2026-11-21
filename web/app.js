@@ -194,20 +194,38 @@
       current_hardware: "NVIDIA L4",
       current_category: "gpu",
       current_session_seconds: 3420.0,
-      total_sessions: 13,
+      total_sessions: 14,
+      compute_units_summary: {
+        account_balance: 903.33,
+        live_rate_hourly: 4.82,
+        active_assignments: 1,
+        estimated_remaining_hours: 187.4,
+        usage_updated_at: "2026-11-15T07:55:00+00:00",
+        all_units: 51.56,
+        today_units: 7.11,
+        seven_days_units: 45.66,
+        current_session_units: 4.58
+      },
       windows: {
         all: {
-          total_seconds: 31440.0,
+          total_seconds: 33240.0,
           gpu_seconds: 29700.0,
-          cpu_only_seconds: 1740.0,
+          cpu_only_seconds: 3540.0,
           unknown_seconds: 0.0,
-          session_count: 13,
+          total_compute_units: 51.56,
+          gpu_compute_units: 50.91,
+          cpu_only_compute_units: 0.65,
+          session_count: 14,
           items: [
             {
               hardware_key: "NVIDIA L4",
               category: "gpu",
               seconds: 18420.0,
-              share_pct: 58.6,
+              share_pct: 55.4,
+              compute_units: 24.66,
+              compute_units_share_pct: 47.8,
+              rate_cu_per_hour: 4.82,
+              rate_source: "live_ccu",
               session_count: 6,
               is_current: true,
               last_seen_at: "2026-11-15T07:55:00+00:00"
@@ -216,7 +234,11 @@
               hardware_key: "NVIDIA A100-SXM4-40GB",
               category: "gpu",
               seconds: 7380.0,
-              share_pct: 23.5,
+              share_pct: 22.2,
+              compute_units: 24.13,
+              compute_units_share_pct: 46.8,
+              rate_cu_per_hour: 11.77,
+              rate_source: "estimate",
               session_count: 2,
               is_current: false,
               last_seen_at: "2026-11-14T16:12:00+00:00"
@@ -225,16 +247,37 @@
               hardware_key: "Tesla T4",
               category: "gpu",
               seconds: 3900.0,
-              share_pct: 12.4,
+              share_pct: 11.7,
+              compute_units: 2.12,
+              compute_units_share_pct: 4.1,
+              rate_cu_per_hour: 1.96,
+              rate_source: "estimate",
               session_count: 3,
               is_current: false,
               last_seen_at: "2026-11-13T11:40:00+00:00"
             },
             {
+              hardware_key: "CPU Only (High-RAM)",
+              category: "cpu_only",
+              seconds: 1800.0,
+              share_pct: 5.4,
+              compute_units: 0.60,
+              compute_units_share_pct: 1.2,
+              rate_cu_per_hour: 1.20,
+              rate_source: "estimate",
+              session_count: 1,
+              is_current: false,
+              last_seen_at: "2026-11-13T18:10:00+00:00"
+            },
+            {
               hardware_key: "CPU Only",
               category: "cpu_only",
               seconds: 1740.0,
-              share_pct: 5.5,
+              share_pct: 5.2,
+              compute_units: 0.05,
+              compute_units_share_pct: 0.1,
+              rate_cu_per_hour: 0.10,
+              rate_source: "estimate",
               session_count: 2,
               is_current: false,
               last_seen_at: "2026-11-12T09:20:00+00:00"
@@ -246,6 +289,9 @@
           gpu_seconds: 5280.0,
           cpu_only_seconds: 1280.0,
           unknown_seconds: 0.0,
+          total_compute_units: 7.11,
+          gpu_compute_units: 7.07,
+          cpu_only_compute_units: 0.04,
           session_count: 3,
           items: [
             {
@@ -253,6 +299,10 @@
               category: "gpu",
               seconds: 5280.0,
               share_pct: 80.5,
+              compute_units: 7.07,
+              compute_units_share_pct: 99.4,
+              rate_cu_per_hour: 4.82,
+              rate_source: "live_ccu",
               session_count: 2,
               is_current: true,
               last_seen_at: "2026-11-15T07:55:00+00:00"
@@ -262,15 +312,36 @@
               category: "cpu_only",
               seconds: 1280.0,
               share_pct: 19.5,
+              compute_units: 0.04,
+              compute_units_share_pct: 0.6,
+              rate_cu_per_hour: 0.10,
+              rate_source: "estimate",
               session_count: 1,
               is_current: false,
               last_seen_at: "2026-11-12T09:20:00+00:00"
+            },
+            {
+              hardware_key: "CPU Only (High-RAM)",
+              category: "cpu_only",
+              seconds: 0.0,
+              share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 1.20,
+              rate_source: "estimate",
+              session_count: 0,
+              is_current: false,
+              last_seen_at: "2026-11-13T18:10:00+00:00"
             },
             {
               hardware_key: "NVIDIA A100-SXM4-40GB",
               category: "gpu",
               seconds: 0.0,
               share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 11.77,
+              rate_source: "estimate",
               session_count: 0,
               is_current: false,
               last_seen_at: "2026-11-14T16:12:00+00:00"
@@ -280,6 +351,10 @@
               category: "gpu",
               seconds: 0.0,
               share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 1.96,
+              rate_source: "estimate",
               session_count: 0,
               is_current: false,
               last_seen_at: "2026-11-13T11:40:00+00:00"
@@ -287,17 +362,24 @@
           ]
         },
         "7d": {
-          total_seconds: 25440.0,
+          total_seconds: 27240.0,
           gpu_seconds: 24120.0,
-          cpu_only_seconds: 1320.0,
+          cpu_only_seconds: 3120.0,
           unknown_seconds: 0.0,
-          session_count: 10,
+          total_compute_units: 45.66,
+          gpu_compute_units: 45.02,
+          cpu_only_compute_units: 0.64,
+          session_count: 11,
           items: [
             {
               hardware_key: "NVIDIA L4",
               category: "gpu",
               seconds: 14820.0,
-              share_pct: 58.3,
+              share_pct: 54.4,
+              compute_units: 19.84,
+              compute_units_share_pct: 43.5,
+              rate_cu_per_hour: 4.82,
+              rate_source: "live_ccu",
               session_count: 5,
               is_current: true,
               last_seen_at: "2026-11-15T07:55:00+00:00"
@@ -306,7 +388,11 @@
               hardware_key: "NVIDIA A100-SXM4-40GB",
               category: "gpu",
               seconds: 7380.0,
-              share_pct: 29.0,
+              share_pct: 27.1,
+              compute_units: 24.13,
+              compute_units_share_pct: 52.8,
+              rate_cu_per_hour: 11.77,
+              rate_source: "estimate",
               session_count: 2,
               is_current: false,
               last_seen_at: "2026-11-14T16:12:00+00:00"
@@ -315,16 +401,37 @@
               hardware_key: "Tesla T4",
               category: "gpu",
               seconds: 1920.0,
-              share_pct: 7.5,
+              share_pct: 7.0,
+              compute_units: 1.05,
+              compute_units_share_pct: 2.3,
+              rate_cu_per_hour: 1.96,
+              rate_source: "estimate",
               session_count: 2,
               is_current: false,
               last_seen_at: "2026-11-13T11:40:00+00:00"
             },
             {
+              hardware_key: "CPU Only (High-RAM)",
+              category: "cpu_only",
+              seconds: 1800.0,
+              share_pct: 6.6,
+              compute_units: 0.60,
+              compute_units_share_pct: 1.3,
+              rate_cu_per_hour: 1.20,
+              rate_source: "estimate",
+              session_count: 1,
+              is_current: false,
+              last_seen_at: "2026-11-13T18:10:00+00:00"
+            },
+            {
               hardware_key: "CPU Only",
               category: "cpu_only",
               seconds: 1320.0,
-              share_pct: 5.2,
+              share_pct: 4.8,
+              compute_units: 0.04,
+              compute_units_share_pct: 0.1,
+              rate_cu_per_hour: 0.10,
+              rate_source: "estimate",
               session_count: 1,
               is_current: false,
               last_seen_at: "2026-11-12T09:20:00+00:00"
@@ -336,6 +443,9 @@
           gpu_seconds: 3420.0,
           cpu_only_seconds: 0.0,
           unknown_seconds: 0.0,
+          total_compute_units: 4.58,
+          gpu_compute_units: 4.58,
+          cpu_only_compute_units: 0.0,
           session_count: 1,
           items: [
             {
@@ -343,6 +453,10 @@
               category: "gpu",
               seconds: 3420.0,
               share_pct: 100.0,
+              compute_units: 4.58,
+              compute_units_share_pct: 100.0,
+              rate_cu_per_hour: 4.82,
+              rate_source: "live_ccu",
               session_count: 1,
               is_current: true,
               last_seen_at: "2026-11-15T07:55:00+00:00"
@@ -352,15 +466,36 @@
               category: "cpu_only",
               seconds: 0.0,
               share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 0.10,
+              rate_source: "estimate",
               session_count: 0,
               is_current: false,
               last_seen_at: "2026-11-12T09:20:00+00:00"
+            },
+            {
+              hardware_key: "CPU Only (High-RAM)",
+              category: "cpu_only",
+              seconds: 0.0,
+              share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 1.20,
+              rate_source: "estimate",
+              session_count: 0,
+              is_current: false,
+              last_seen_at: "2026-11-13T18:10:00+00:00"
             },
             {
               hardware_key: "NVIDIA A100-SXM4-40GB",
               category: "gpu",
               seconds: 0.0,
               share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 11.77,
+              rate_source: "estimate",
               session_count: 0,
               is_current: false,
               last_seen_at: "2026-11-14T16:12:00+00:00"
@@ -370,6 +505,10 @@
               category: "gpu",
               seconds: 0.0,
               share_pct: 0.0,
+              compute_units: 0.0,
+              compute_units_share_pct: 0.0,
+              rate_cu_per_hour: 1.96,
+              rate_source: "estimate",
               session_count: 0,
               is_current: false,
               last_seen_at: "2026-11-13T11:40:00+00:00"
@@ -385,6 +524,7 @@
     pollSeconds: 10,
     outputLimit: 12,
     uptimeRange: "all", // "all" | "today" | "7d" | "current"
+    uptimeMetric: "time", // "time" | "units"
     modeFilter: "all",
     searchQuery: "",
     sortKey: "created_at_full",
@@ -422,10 +562,18 @@
     notebooksSearch: "",
     notebooksIncludeBackups: false,
     notebooksLoaded: false,
+    notebooksDriveEnabled: false,
+    notebooksDriveError: null,
     pendingInjectTarget: null,
     lastInjectTrigger: null,
     pendingBindTarget: null,
-    lastBindTrigger: null
+    lastBindTrigger: null,
+    archiveUserToggled: false,
+    // Headless CLI + Pure OAuth2 Provisioner state
+    provisionerStatus: null,
+    provisionerActiveJobId: null,
+    provisionerJobTimer: null,
+    provisionerBooting: false
   };
 
   function createDemoV2State() {
@@ -609,10 +757,12 @@
       ],
       notebooks: [
         {
-          path: "demo://sample_studio/colab/sample_gateway_colab.ipynb",
+          path: "gdrive://demo_sample_gateway_id",
+          source: "drive_api",
+          file_id: "demo_sample_gateway_id",
           name: "sample_gateway_colab.ipynb",
           stem: "sample_gateway_colab",
-          display_path: "colab/sample_gateway_colab.ipynb",
+          display_path: "Colab Notebooks/sample_gateway_colab.ipynb",
           is_backup: false,
           size_kib: 74.8,
           modified_at: nowIso,
@@ -625,6 +775,8 @@
         },
         {
           path: "demo://Colab Notebooks/sample_audio_batch_colab.ipynb",
+          source: "local",
+          file_id: null,
           name: "sample_audio_batch_colab.ipynb",
           stem: "sample_audio_batch_colab",
           display_path: "Colab Notebooks/sample_audio_batch_colab.ipynb",
@@ -638,7 +790,38 @@
           total_cells: 6,
           colab_url: ""
         }
-      ]
+      ],
+      provisioner: {
+        ok: true,
+        cli_available: true,
+        cli_auth_configured: true,
+        drive_oauth_configured: true,
+        drive_monitor_path: "_colab_monitor",
+        drive_oauth_health: { ok: true, monitor_folder_path: "_colab_monitor" },
+        usage: {
+          available: true,
+          balance: 903.33,
+          rate_hourly: 4.82,
+          assignments_count: 1,
+          estimated_remaining_hours: 187.4,
+          fetched_at: nowIso
+        },
+        busy: false,
+        active_job: null,
+        recent_jobs: [],
+        sessions: [
+          {
+            name: "demo-l4-studio",
+            endpoint: "m-s-demo-l4-01",
+            hardware: "L4",
+            shape: "High-RAM",
+            variant: "GPU",
+            status: "ACTIVE",
+            instance_id: "demo_inst_l4_01",
+            drive_mode: "oauth_silent"
+          }
+        ]
+      }
     };
   }
 
@@ -878,11 +1061,20 @@
     }
   }
 
-  // --- Tooltip helpers (viewport-clamped on all 4 edges) ---
+  // --- Tooltip & Modal Dialog helpers ---
   function showTooltip(anchor, title, meta) {
     const tip = document.getElementById("chart-tooltip");
-    document.getElementById("tooltip-title").textContent = title;
-    document.getElementById("tooltip-meta").textContent = meta;
+    const titleEl = document.getElementById("tooltip-title");
+    const metaEl = document.getElementById("tooltip-meta");
+    if (!tip || !titleEl || !metaEl) return;
+    titleEl.textContent = title || "";
+    if (meta) {
+      metaEl.textContent = meta;
+      metaEl.hidden = false;
+    } else {
+      metaEl.textContent = "";
+      metaEl.hidden = true;
+    }
     tip.hidden = false;
 
     const rect = anchor.getBoundingClientRect();
@@ -899,7 +1091,87 @@
   }
 
   function hideTooltip() {
-    document.getElementById("chart-tooltip").hidden = true;
+    const tip = document.getElementById("chart-tooltip");
+    if (tip) tip.hidden = true;
+  }
+
+  function attachTooltipTarget(node) {
+    if (!node || node.dataset.tooltipBound === "true") return;
+    node.dataset.tooltipBound = "true";
+    const show = () => {
+      const txt = node.dataset.tooltip;
+      if (txt) showTooltip(node, txt, "");
+    };
+    node.addEventListener("mouseenter", show);
+    node.addEventListener("mouseleave", hideTooltip);
+    node.addEventListener("focus", show);
+    node.addEventListener("blur", hideTooltip);
+  }
+
+  let supportsDisplayTransitionCache;
+  function canTransitionDisplay() {
+    if (supportsDisplayTransitionCache !== undefined) return supportsDisplayTransitionCache;
+    if (!window.CSS || typeof window.CSS.supports !== "function" || !window.CSS.supports("transition-behavior", "allow-discrete") || !document.body) {
+      supportsDisplayTransitionCache = false;
+      return false;
+    }
+    const probe = document.createElement("div");
+    probe.style.cssText = "transition: display 1s allow-discrete !important; display: block;";
+    document.body.appendChild(probe);
+    void window.getComputedStyle(probe).display;
+    probe.style.display = "none";
+    supportsDisplayTransitionCache = window.getComputedStyle(probe).display === "block";
+    probe.remove();
+    return supportsDisplayTransitionCache;
+  }
+
+  function supportsTopLayerExit() {
+    return Boolean(window.CSS && typeof window.CSS.supports === "function" && window.CSS.supports("overlay", "auto") && canTransitionDisplay());
+  }
+
+  function openModalDialog(dialog) {
+    if (!dialog) return;
+    dialog.removeAttribute("data-closing");
+    if (!dialog.open) dialog.showModal();
+  }
+
+  async function closeTopLayerDialog(dialog) {
+    if (!dialog || !dialog.open) return;
+    if (!reducedMotion.matches && !supportsTopLayerExit() && !dialog.hasAttribute("data-closing") && typeof dialog.getAnimations === "function") {
+      dialog.setAttribute("data-closing", "");
+      const animations = dialog.getAnimations({ subtree: true });
+      if (animations.length > 0) {
+        await Promise.race([
+          Promise.allSettled(animations.map((a) => a.finished)),
+          new Promise((resolve) => window.setTimeout(resolve, 400))
+        ]);
+      }
+      if (!dialog.hasAttribute("data-closing")) return;
+      dialog.removeAttribute("data-closing");
+    }
+    if (dialog.open) dialog.close();
+  }
+
+  function enhanceModalDialog(dialog, closeFn) {
+    if (!dialog) return;
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeFn();
+    });
+    if (!("closedBy" in HTMLDialogElement.prototype)) {
+      const outside = (e) => {
+        const r = dialog.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      let pressedOutside = false;
+      dialog.addEventListener("pointerdown", (e) => {
+        pressedOutside = outside(e);
+      });
+      dialog.addEventListener("pointerup", (e) => {
+        if (pressedOutside && outside(e)) closeFn();
+        pressedOutside = false;
+      });
+    }
   }
 
   // --- Render functions ---
@@ -1346,7 +1618,9 @@
   }
 
   function getHardwareToken(hardwareKey, category) {
-    if (category === "cpu_only") return "s3";
+    if (category === "cpu_only") {
+      return String(hardwareKey || "").toLowerCase().includes("high-ram") ? "s5" : "s3";
+    }
     if (category === "unknown" || hardwareKey === "其他 GPU") return "other";
     const key = String(hardwareKey || "").toUpperCase();
     if (key.includes("L4")) return "s1";
@@ -1382,6 +1656,7 @@
   function renderUptimeCard(snap) {
     const subtitle = document.getElementById("uptime-subtitle");
     const summaryHost = document.getElementById("uptime-summary-kv");
+    const distTitle = document.getElementById("uptime-dist-title");
     const totalLabel = document.getElementById("uptime-total-label");
     const capBar = document.getElementById("uptime-capacity-bar");
     const legendHost = document.getElementById("uptime-legend");
@@ -1391,19 +1666,30 @@
     const tableFoot = document.getElementById("uptime-table-foot");
 
     const range = Object.hasOwn(UPTIME_RANGE_META, appState.uptimeRange) ? appState.uptimeRange : "all";
+    const metric = appState.uptimeMetric === "units" ? "units" : "time";
     const meta = UPTIME_RANGE_META[range];
     for (const btn of document.querySelectorAll("[data-uptime-range]")) {
       btn.setAttribute("aria-pressed", String(btn.dataset.uptimeRange === range));
+    }
+    for (const btn of document.querySelectorAll("[data-uptime-metric]")) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.uptimeMetric === metric));
+    }
+    if (distTitle) {
+      distTitle.textContent = metric === "units"
+        ? "各硬件积分消耗构成（GPU 型号与标准 / 高内存 CPU Only）"
+        : "各硬件开机时长构成（GPU 型号与标准 / 高内存 CPU Only）";
     }
 
     const summary = snap?.uptime_summary;
     const win = summary?.windows?.[range];
     if (!summary || !win) {
-      subtitle.textContent = "暂无开机时间账本数据";
+      subtitle.textContent = "暂无开机时间与积分账本数据";
       const emptyKvs = [
         [meta.kvLabel, "—"],
+        ["所选周期积分消耗", "—"],
         ["GPU 机型合计", "—"],
         ["CPU Only 合计", "—"],
+        ["账号剩余积分 / 实时费率", "—"],
         ["当前实例 / 会话", "—"]
       ].map(([k, v]) => {
         const wrap = el("div", undefined, "kv-item");
@@ -1414,10 +1700,10 @@
       totalLabel.textContent = "—";
       capBar.replaceChildren();
       legendHost.replaceChildren(el("span", "等待服务端返回 uptime_summary", "chart-caption"));
-      distHost.replaceChildren(el("div", "暂无可展示的分 GPU / CPU Only 开机时间记录", "chart-caption"));
+      distHost.replaceChildren(el("div", "暂无可展示的分 GPU / CPU Only 开机与积分记录", "chart-caption"));
       tableBody.replaceChildren();
       tableFoot?.replaceChildren();
-      caption.textContent = "分母为所选统计周期内的总在线时长；无 GPU 实例归入 CPU Only，离线空窗期不计入。";
+      caption.textContent = "分母为所选统计周期内的总在线时长或总积分；无 GPU 实例按内存区分 CPU Only（标准 ≈0.10 CU/h）与 CPU Only (High-RAM ≈1.20 CU/h)，离线空窗期不计入。";
       return;
     }
 
@@ -1426,10 +1712,21 @@
     const cpuSec = Number(win.cpu_only_seconds || 0);
     const gpuPct = totalSec > 0 ? ((gpuSec / totalSec) * 100).toFixed(1) : "0.0";
     const cpuPct = totalSec > 0 ? ((cpuSec / totalSec) * 100).toFixed(1) : "0.0";
+    const totalCu = Number(win.total_compute_units || 0);
+    const gpuCu = Number(win.gpu_compute_units || 0);
+    const cpuCu = Number(win.cpu_only_compute_units || 0);
     const sessCnt = Number(win.session_count || 0);
     const curHwText = summary.current_online
       ? `${summary.current_hardware || "待识别硬件"} (在线)`
       : (isShutdownOffline(snap) ? "当前已关机" : "当前离线");
+
+    const ccu = summary.compute_units_summary || {};
+    const accBal = typeof ccu.account_balance === "number" ? ccu.account_balance : null;
+    const liveRate = typeof ccu.live_rate_hourly === "number" ? ccu.live_rate_hourly : null;
+    const remHours = typeof ccu.estimated_remaining_hours === "number" ? ccu.estimated_remaining_hours : null;
+    const accText = accBal !== null
+      ? `${accBal.toFixed(2)} CU · ${(liveRate ?? 0).toFixed(2)}/hr${remHours ? ` · 约 ${remHours}h` : ""}`
+      : "未接入 CLI 余额";
 
     const ledgerPrefix = snap.is_demo
       ? "[演示样本] "
@@ -1439,8 +1736,10 @@
 
     const kvData = [
       [meta.kvLabel, formatDuration(totalSec)],
-      ["GPU 机型合计", `${formatDuration(gpuSec)} (${gpuPct}%)`],
-      ["CPU Only 合计", `${formatDuration(cpuSec)} (${cpuPct}%)`],
+      ["所选周期积分消耗", `${totalCu.toFixed(2)} CU (GPU ${gpuCu.toFixed(2)} · CPU ${cpuCu.toFixed(2)})`],
+      ["GPU 机型合计", `${formatDuration(gpuSec)} (${gpuPct}%) · ${gpuCu.toFixed(2)} CU`],
+      ["CPU Only 合计", `${formatDuration(cpuSec)} (${cpuPct}%) · ${cpuCu.toFixed(2)} CU`],
+      ["账号剩余积分 / 实时费率", accText],
       ["当前实例 / 会话", `${curHwText} · ${integerFmt.format(sessCnt)} 次会话`]
     ];
     const kvNodes = kvData.map(([k, v]) => {
@@ -1450,14 +1749,30 @@
     });
     summaryHost.replaceChildren(...kvNodes);
 
-    totalLabel.textContent = `总计 ${formatDuration(totalSec)}（${integerFmt.format(Math.round(totalSec))}s）`;
+    totalLabel.textContent = `总计 ${formatDuration(totalSec)}（${integerFmt.format(Math.round(totalSec))}s） · ${totalCu.toFixed(2)} CU`;
 
-    const items = Array.isArray(win.items) ? win.items : [];
-    const activeItems = items.filter((item) => Number(item.seconds || 0) > 0);
-    if (totalSec > 0 && activeItems.length > 0) {
+    const rawItems = Array.isArray(win.items) ? win.items : [];
+    const items = rawItems.map((it) => {
+      const cu = Number(it.compute_units || 0);
+      const cuShare = it.compute_units_share_pct !== undefined
+        ? Number(it.compute_units_share_pct || 0)
+        : (totalCu > 0 ? Number(((cu / totalCu) * 100).toFixed(1)) : 0);
+      return {
+        ...it,
+        compute_units: cu,
+        compute_units_share_pct: cuShare,
+        rate_cu_per_hour: Number(it.rate_cu_per_hour || 0),
+        rate_source: it.rate_source || "estimate"
+      };
+    });
+
+    const metricTotal = metric === "units" ? totalCu : totalSec;
+    const metricVal = (it) => (metric === "units" ? it.compute_units : Number(it.seconds || 0));
+    const activeItems = items.filter((item) => metricVal(item) > 0);
+    if (metricTotal > 0 && activeItems.length > 0) {
       const segNodes = activeItems.map((item) => {
         const seg = el("div", undefined, "capacity-seg");
-        seg.style.flexGrow = String(Math.max(0.1, Number(item.seconds || 0)));
+        seg.style.flexGrow = String(Math.max(0.01, metricVal(item)));
         seg.style.setProperty("--seg-color", `var(--${getHardwareToken(item.hardware_key, item.category)})`);
         return seg;
       });
@@ -1467,17 +1782,17 @@
         const legendItem = el("span", undefined, "legend-item");
         const sw = el("i", undefined, "swatch");
         sw.style.setProperty("--swatch-color", `var(--${getHardwareToken(item.hardware_key, item.category)})`);
-        legendItem.append(
-          sw,
-          document.createTextNode(`${item.hardware_key} ${formatDuration(item.seconds)}`)
-        );
+        const labelVal = metric === "units"
+          ? `${item.hardware_key} ${item.compute_units.toFixed(2)} CU`
+          : `${item.hardware_key} ${formatDuration(item.seconds)} (${item.compute_units.toFixed(2)} CU)`;
+        legendItem.append(sw, document.createTextNode(labelVal));
         return legendItem;
       });
       legendHost.replaceChildren(...legendNodes);
     } else {
       capBar.replaceChildren();
       legendHost.replaceChildren(
-        el("span", "当前统计周期暂无在线时长记录（GPU 与 CPU Only 均记为 0s）", "chart-caption")
+        el("span", "当前统计周期暂无在线时长与积分消耗记录（GPU 与 CPU Only 均记为 0）", "chart-caption")
       );
     }
 
@@ -1489,6 +1804,7 @@
       const head = nonCpuItems.slice(0, 4);
       const tail = nonCpuItems.slice(4);
       const otherSec = tail.reduce((acc, x) => acc + Number(x.seconds || 0), 0);
+      const otherCu = tail.reduce((acc, x) => acc + Number(x.compute_units || 0), 0);
       const otherSess = tail.reduce((acc, x) => acc + Number(x.session_count || 0), 0);
       displayNonCpu = [
         ...head,
@@ -1497,6 +1813,10 @@
           category: "gpu",
           seconds: otherSec,
           share_pct: totalSec > 0 ? Number(((otherSec / totalSec) * 100).toFixed(1)) : 0,
+          compute_units: Number(otherCu.toFixed(2)),
+          compute_units_share_pct: totalCu > 0 ? Number(((otherCu / totalCu) * 100).toFixed(1)) : 0,
+          rate_cu_per_hour: otherSec > 0 ? Number(((otherCu * 3600) / otherSec).toFixed(2)) : 0,
+          rate_source: "estimate",
           session_count: otherSess,
           is_current: tail.some((x) => Boolean(x.is_current)),
           last_seen_at: null
@@ -1505,7 +1825,7 @@
     }
 
     const displayItems = [...displayNonCpu, ...cpuOnlyItems].sort((a, b) => {
-      const diff = Number(b.seconds || 0) - Number(a.seconds || 0);
+      const diff = metricVal(b) - metricVal(a);
       if (diff !== 0) return diff;
       if (Boolean(b.is_current) !== Boolean(a.is_current)) return a.is_current ? -1 : 1;
       const rank = (cat) => (cat === "gpu" ? 0 : cat === "cpu_only" ? 1 : 2);
@@ -1513,11 +1833,14 @@
     });
 
     if (!displayItems.length) {
-      distHost.replaceChildren(el("div", "暂无硬件运行时记录", "chart-caption"));
+      distHost.replaceChildren(el("div", "暂无硬件运行时与积分记录", "chart-caption"));
     } else {
       const distNodes = displayItems.map((item) => {
         const sec = Number(item.seconds || 0);
+        const cu = item.compute_units;
         const share = totalSec > 0 ? (sec / totalSec) * 100 : 0;
+        const cuShare = totalCu > 0 ? (cu / totalCu) * 100 : 0;
+        const barPct = metric === "units" ? cuShare : share;
         const token = getHardwareToken(item.hardware_key, item.category);
 
         const wrap = el("div");
@@ -1530,15 +1853,17 @@
           lbl.append(createUptimeBadge("当前在线", true));
         }
 
-        const valText = `${formatDuration(sec)} (${Number(item.share_pct ?? share).toFixed(1)}%) · ${integerFmt.format(item.session_count ?? 0)} 次`;
+        const valText = metric === "units"
+          ? `${cu.toFixed(2)} CU (${Number(item.compute_units_share_pct ?? cuShare).toFixed(1)}%) · ${formatDuration(sec)} · ${item.rate_cu_per_hour.toFixed(2)}/h`
+          : `${formatDuration(sec)} (${Number(item.share_pct ?? share).toFixed(1)}%) · ${cu.toFixed(2)} CU · ${integerFmt.format(item.session_count ?? 0)} 次`;
         head.append(lbl, el("span", valText, "dist-value"));
 
         const track = el("div", undefined, "track");
         track.setAttribute("aria-hidden", "true");
         const fill = el("div", undefined, "fill");
-        fill.style.setProperty("--value", share.toFixed(2) + "%");
+        fill.style.setProperty("--value", barPct.toFixed(2) + "%");
         fill.style.setProperty("--series", `var(--${token})`);
-        if (sec <= 0) {
+        if (metricVal(item) <= 0) {
           fill.style.minInlineSize = "0";
         }
         track.append(fill);
@@ -1563,6 +1888,9 @@
         th.append(badge);
       }
 
+      const rateTag = item.rate_source === "live_ccu" ? "实时" : "估算";
+      const rateText = `${item.rate_cu_per_hour.toFixed(2)} (${rateTag})`;
+
       tr.append(
         th,
         el("td", getCategoryLabel(item.category)),
@@ -1570,6 +1898,9 @@
         el("td", formatDuration(item.seconds), "numeric"),
         el("td", `${Number(item.seconds ?? 0).toFixed(1)}s`, "numeric mono"),
         el("td", `${Number(item.share_pct ?? 0).toFixed(1)}%`, "numeric"),
+        el("td", rateText, "numeric mono"),
+        el("td", `${item.compute_units.toFixed(2)} CU`, "numeric mono"),
+        el("td", `${item.compute_units_share_pct.toFixed(1)}%`, "numeric"),
         el("td", item.last_seen_at ? formatLocalTime(item.last_seen_at) : "—", "mono")
       );
       return tr;
@@ -1580,6 +1911,7 @@
       const footTr = el("tr");
       const footTh = el("th", "合计");
       footTh.scope = "row";
+      const avgRate = totalSec > 0 ? `${((totalCu * 3600) / totalSec).toFixed(2)}` : "—";
       footTr.append(
         footTh,
         el("td", "—"),
@@ -1587,14 +1919,23 @@
         el("td", formatDuration(totalSec), "numeric"),
         el("td", `${totalSec.toFixed(1)}s`, "numeric mono"),
         el("td", totalSec > 0 ? "100.0%" : "0.0%", "numeric"),
+        el("td", avgRate, "numeric mono"),
+        el("td", `${totalCu.toFixed(2)} CU`, "numeric mono"),
+        el("td", totalCu > 0 ? "100.0%" : "0.0%", "numeric"),
         el("td", "—", "mono")
       );
       tableFoot.replaceChildren(footTr);
     }
 
-    caption.textContent = range === "current"
-      ? "分母为当前在线会话时长；若实例离线或已关机则显示 0s。无 GPU 实例归入 CPU Only。"
-      : `分母为「${meta.desc}」统计周期内的总在线时长；无 GPU 实例归入 CPU Only，离线空窗期不计入。`;
+    if (metric === "units") {
+      caption.textContent = range === "current"
+        ? "分母为当前在线会话积分消耗；费率优先取单个在线会话下 colab usage 实时速率，其余按机型参考费率估算。"
+        : `分母为「${meta.desc}」统计周期内的总积分消耗 (CU)；费率优先取实时 CCU 校准，其余按机型参考费率估算。`;
+    } else {
+      caption.textContent = range === "current"
+        ? "分母为当前在线会话时长；若实例离线或已关机则显示 0s。无 GPU 实例归入 CPU Only。"
+        : `分母为「${meta.desc}」统计周期内的总在线时长；无 GPU 实例归入 CPU Only，离线空窗期不计入。`;
+    }
   }
 
   const MAX_CHART_BARS = 200;
@@ -1757,14 +2098,29 @@
     });
 
     updateSortHeaders();
-    countLabel.textContent = `当前显示 ${sorted.length} / 已加载 ${all.length} 条（云盘总计 ${appState.snapshot?.total_output_files ?? all.length} 条）`;
+    const totalArchive = appState.snapshot?.total_output_files ?? all.length;
+    countLabel.textContent = `当前显示 ${sorted.length} / 已加载 ${all.length} 条（云盘总计 ${totalArchive} 条）`;
 
+    const archiveSummary = document.getElementById("archive-section-summary");
+    const archiveDisclosure = document.getElementById("archive-cards-disclosure");
+    if (archiveSummary) {
+      archiveSummary.textContent = all.length > 0
+        ? `云盘出图归档与耗时分析（${all.length} 条已加载 / 云盘总计 ${totalArchive} 条）`
+        : "云盘出图归档与耗时分析（当前无归档样本，点击展开）";
+    }
+    if (archiveDisclosure && !appState.archiveUserToggled) {
+      archiveDisclosure.open = all.length > 0;
+    }
+
+    const tableScroll = tbody.closest(".table-scroll");
     if (!sorted.length) {
       tbody.replaceChildren();
+      if (tableScroll) tableScroll.hidden = true;
       empty.hidden = false;
       return;
     }
 
+    if (tableScroll) tableScroll.hidden = false;
     empty.hidden = true;
     const rows = sorted.map((r) => {
       const tr = el("tr");
@@ -1847,12 +2203,11 @@
     const paths = [item.local_path, item.drive_url].filter(Boolean).join(" | ");
     document.getElementById("dialog-paths").textContent = paths || "无附加路径信息";
 
-    dialog.showModal();
+    openModalDialog(dialog);
   }
 
   function closeDetailDialog() {
-    const dialog = document.getElementById("detail-dialog");
-    if (dialog.open) dialog.close();
+    closeTopLayerDialog(document.getElementById("detail-dialog"));
   }
 
   function syncActionButtons(snap) {
@@ -2142,7 +2497,10 @@
     );
     if (stageLbl) stageLbl.textContent = `当前阶段：${prog.stage || "—"}`;
     if (pctLbl) pctLbl.textContent = total > 0 ? `${done} / ${total} (${pct}%)` : "—";
-    if (fill) fill.style.setProperty("--value", `${pct}%`);
+    if (fill) {
+      fill.style.setProperty("--pct", `${pct}%`);
+      fill.classList.toggle("is-full", pct >= 99.5);
+    }
     if (curItem) curItem.textContent = `当前处理项：${prog.current_item || "—"}`;
 
     const online = isV2Online(inst);
@@ -2244,12 +2602,11 @@
     );
     appState.pendingConfirmAction = cfg.onConfirm || null;
     appState.lastConfirmTrigger = cfg.trigger || document.activeElement;
-    dlg.showModal();
+    openModalDialog(dlg);
   }
 
   function closeActionConfirmDialog() {
-    const dlg = document.getElementById("action-confirm-dialog");
-    if (dlg && dlg.open) dlg.close();
+    closeTopLayerDialog(document.getElementById("action-confirm-dialog"));
   }
 
   async function fetchInspectorLogs() {
@@ -2433,6 +2790,8 @@
     if (appState.sourceMode === "demo") {
       if (!appState.demoV2State) appState.demoV2State = createDemoV2State();
       appState.notebooks = appState.demoV2State.notebooks || [];
+      appState.notebooksDriveEnabled = true;
+      appState.notebooksDriveError = null;
       appState.notebooksLoaded = true;
       renderNotebooksCard();
       return;
@@ -2443,6 +2802,8 @@
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
       appState.notebooks = Array.isArray(data.notebooks) ? data.notebooks : [];
+      appState.notebooksDriveEnabled = Boolean(data.drive_scan_enabled);
+      appState.notebooksDriveError = data.drive_error || null;
       appState.notebooksLoaded = true;
       renderNotebooksCard();
     } catch (err) {
@@ -2466,27 +2827,62 @@
     const all = appState.notebooks || [];
     const filtered = all.filter((nb) => {
       if (!q) return true;
-      return `${nb.name} ${nb.display_path} ${nb.detected_mode}`.toLowerCase().includes(q);
+      return `${nb.name} ${nb.display_path} ${nb.detected_mode} ${nb.source || ""}`.toLowerCase().includes(q);
     });
 
     const injectedCnt = all.filter((n) => n.injected).length;
+    const driveHint = appState.notebooksDriveError
+      ? " · Drive API 扫描失败"
+      : appState.notebooksDriveEnabled
+        ? " · Drive API 已接通"
+        : "";
     if (countLbl) {
-      countLbl.textContent = `显示 ${filtered.length} / 共 ${all.length} 个笔记本（已接入探针 ${injectedCnt} 个）`;
+      countLbl.textContent = `显示 ${filtered.length} / 共 ${all.length} 个笔记本（已接入探针 ${injectedCnt} 个）${driveHint}`;
     }
+
+    const disc = document.getElementById("notebooks-disclosure");
+    const discText = document.getElementById("notebooks-disclosure-text");
+    if (discText) {
+      if (!appState.notebooksLoaded) {
+        discText.textContent = disc?.open ? "收起笔记本列表（正在扫描…）" : "展开笔记本列表（正在扫描…）";
+      } else {
+        const prefix = disc?.open ? "收起笔记本列表" : "展开笔记本列表";
+        discText.textContent = `${prefix} · 共 ${all.length} 个（已接入 ${injectedCnt} 个）${driveHint}`;
+      }
+    }
+
+    const tableScroll = tbody.closest(".table-scroll");
     if (!filtered.length) {
       tbody.replaceChildren();
-      if (empty) empty.hidden = false;
+      if (tableScroll) tableScroll.hidden = true;
+      if (empty) {
+        empty.hidden = false;
+        if (all.length > 0 && q) {
+          empty.textContent = "未检索到匹配的 .ipynb 文件。";
+        } else if (appState.notebooksDriveError) {
+          empty.textContent = `OAuth2 Drive 扫描异常：${appState.notebooksDriveError}`;
+        } else {
+          empty.textContent = appState.notebooksDriveEnabled
+            ? "未在 Google Drive 云盘与本地目录中发现 .ipynb 文件。"
+            : "当前未配置 Google Drive 扫描或本地目录无 .ipynb 文件。";
+        }
+      }
       return;
     }
+    if (tableScroll) tableScroll.hidden = false;
     if (empty) empty.hidden = true;
 
     const rows = filtered.map((nb) => {
       const tr = el("tr");
+      const isDriveApi = nb.source === "drive_api" || String(nb.path || "").startsWith("gdrive://");
 
       const nameTh = el("th", undefined, "mono");
       nameTh.scope = "row";
+      const srcBadge = el("span", isDriveApi ? "Drive API" : "本地", "nb-source-badge");
+      srcBadge.dataset.source = isDriveApi ? "drive_api" : "local";
       nameTh.append(
         document.createTextNode(nb.name),
+        srcBadge,
         el("span", `${nb.display_path} · ${nb.total_cells} 单元 · ${nb.size_kib} KiB`, "nb-path-sub")
       );
 
@@ -2498,7 +2894,10 @@
       statusTd.append(badge);
 
       const urlTd = el("td");
-      urlTd.append(el("span", nb.colab_url ? "已绑定 Colab 链接" : "未绑定（将打开 Drive 搜索）", "chart-caption"));
+      const urlText = isDriveApi
+        ? "Drive 直达链接"
+        : (nb.colab_url ? "已绑定 Colab 链接" : "未绑定（将打开 Drive 搜索）");
+      urlTd.append(el("span", urlText, "chart-caption"));
 
       const opsTd = el("td");
       const opsWrap = el("div", undefined, "ops-btn-group");
@@ -2523,7 +2922,9 @@
         removeBtn.addEventListener("click", () => {
           openActionConfirmDialog({
             title: `确认移除 ${nb.name} 的探针注入`,
-            desc: "将先在纯本地目录备份当前 .ipynb，再仅删除带 colab_monitor_injected 标记的单元，原业务单元保持完全不变。",
+            desc: isDriveApi
+              ? "将先在服务端本地备份原 .ipynb，再通过 Google Drive v3 API 原地移除带 colab_monitor_injected 标记的单元（保持链接 ID 不变）。"
+              : "将先在纯本地目录备份当前 .ipynb，再仅删除带 colab_monitor_injected 标记的单元，原业务单元保持完全不变。",
             kv: [["笔记本", nb.display_path], ["当前单元数", String(nb.total_cells)]],
             trigger: removeBtn,
             onConfirm: () => applyRemoveInjection(nb)
@@ -2548,21 +2949,416 @@
       );
       return;
     }
+    const isLoopback = ["127.0.0.1", "localhost", "::1", "[::1]"].includes(window.location.hostname);
     try {
       const resp = await fetch("/api/v2/notebooks/launch", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Colab-Action": "notebooks.launch" },
-        body: JSON.stringify({ action: "notebooks.launch", path: nb.path, open_browser: true }),
+        body: JSON.stringify({ action: "notebooks.launch", path: nb.path, open_browser: isLoopback }),
         cache: "no-store"
       });
       const data = await resp.json().catch(() => null);
       if (resp.ok && data && data.ok) {
+        if (!isLoopback && data.launched_url) {
+          try {
+            const parsed = new URL(data.launched_url);
+            if (parsed.protocol === "https:" && (parsed.hostname === "colab.research.google.com" || parsed.hostname === "drive.google.com")) {
+              window.open(parsed.toString(), "_blank", "noopener");
+            }
+          } catch {
+            // ignore invalid url
+          }
+        }
         showNotice(data.message || "已在浏览器中打开笔记本。");
       } else {
         showNotice("唤起失败：" + (data?.error || `HTTP ${resp.status}`));
       }
     } catch (err) {
       showNotice("唤起异常：" + (err?.message || err));
+    }
+  }
+
+  // --- Headless Colab Provisioner (CLI + Pure OAuth2 Drive API) ---
+  function clearProvisionerJobTimer() {
+    if (appState.provisionerJobTimer) {
+      window.clearTimeout(appState.provisionerJobTimer);
+      appState.provisionerJobTimer = null;
+    }
+  }
+
+  function renderProvisionerJob(job) {
+    const box = document.getElementById("provisioner-job-status");
+    const titleEl = document.getElementById("provisioner-job-title");
+    const logEl = document.getElementById("provisioner-job-log");
+    if (!box || !titleEl || !logEl) return;
+    if (!job) {
+      box.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    const stepLabels = {
+      queued: "排队中",
+      allocating_vm: "正在向 Colab 分配算力",
+      uploading_agent: "正在上传 colab_agent.py",
+      bootstrapping_oauth_agent: "正在注入纯 OAuth2 凭据并启动探针",
+      completed: "开机成功",
+      failed: "开机失败"
+    };
+    const stateLabel = stepLabels[job.step] || job.status || "执行中";
+    titleEl.textContent = `${job.session_name || "Colab VM"} (${job.runtime_spec || "cpu"}) · ${stateLabel}`;
+    const lines = Array.isArray(job.steps_log) ? [...job.steps_log] : [];
+    if (job.error) lines.push(`错误：${job.error}`);
+    if (job.instance_id) lines.push(`已接入实例：${job.instance_id}`);
+    logEl.textContent = lines.join("\n") || "等待执行输出…";
+  }
+
+  function renderProvisioner() {
+    const st = appState.provisionerStatus;
+    const ccuBadge = document.getElementById("provisioner-ccu-badge");
+    const cliBadge = document.getElementById("provisioner-cli-badge");
+    const driveBadge = document.getElementById("provisioner-drive-badge");
+    const bootBtn = document.getElementById("provisioner-boot-btn");
+    const tbody = document.getElementById("provisioner-sessions-body");
+    const empty = document.getElementById("provisioner-sessions-empty");
+
+    if (ccuBadge) {
+      const usage = st?.usage;
+      if (!st) {
+        ccuBadge.textContent = "积分余额：检测中";
+        ccuBadge.dataset.injected = "false";
+      } else if (usage && typeof usage.balance === "number") {
+        const rate = Number(usage.rate_hourly || 0);
+        const rem = typeof usage.estimated_remaining_hours === "number" && rate > 0
+          ? ` (约 ${usage.estimated_remaining_hours}h)`
+          : "";
+        ccuBadge.textContent = `积分余额：${usage.balance.toFixed(2)} CU · ${rate.toFixed(2)}/hr${rem}`;
+        ccuBadge.dataset.injected = "true";
+      } else {
+        ccuBadge.textContent = "积分余额：不可用";
+        ccuBadge.dataset.injected = "false";
+      }
+    }
+
+    if (cliBadge) {
+      if (!st) {
+        cliBadge.textContent = "CLI：检测中";
+        cliBadge.dataset.injected = "false";
+      } else if (st.cli_available && st.cli_auth_configured) {
+        cliBadge.textContent = "CLI：已就绪";
+        cliBadge.dataset.injected = "true";
+      } else if (st.cli_available) {
+        cliBadge.textContent = "CLI：待授权";
+        cliBadge.dataset.injected = "false";
+      } else {
+        cliBadge.textContent = "CLI：未安装";
+        cliBadge.dataset.injected = "false";
+      }
+    }
+
+    if (driveBadge) {
+      if (!st) {
+        driveBadge.textContent = "OAuth2 Drive：检测中";
+        driveBadge.dataset.injected = "false";
+      } else if (st.drive_oauth_configured) {
+        const healthy = !st.drive_oauth_health || st.drive_oauth_health.ok !== false;
+        driveBadge.textContent = healthy ? `OAuth2 Drive：已就绪 (${st.drive_monitor_path || "_colab_monitor"})` : "OAuth2 Drive：异常";
+        driveBadge.dataset.injected = String(healthy);
+        if (!healthy && st.drive_oauth_health?.error) {
+          driveBadge.dataset.tooltip = st.drive_oauth_health.error;
+        } else {
+          delete driveBadge.dataset.tooltip;
+        }
+      } else {
+        driveBadge.textContent = "OAuth2 Drive：未配置";
+        driveBadge.dataset.injected = "false";
+      }
+    }
+
+    const isBusy = Boolean(appState.provisionerBooting || st?.busy);
+    if (bootBtn) {
+      const disabled = isBusy || (appState.sourceMode === "live" && (!st || !st.cli_available));
+      bootBtn.disabled = disabled;
+      bootBtn.setAttribute("aria-disabled", String(disabled));
+      bootBtn.textContent = isBusy ? "开机中…" : "一键开机";
+    }
+
+    if (!tbody) return;
+    const tableScroll = tbody.closest(".table-scroll");
+    const sessions = Array.isArray(st?.sessions) ? st.sessions : [];
+    if (!sessions.length) {
+      tbody.replaceChildren();
+      if (tableScroll) tableScroll.hidden = true;
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = st?.sessions_error ? `获取会话列表失败：${st.sessions_error}` : "当前无运行中的 Colab CLI 会话。";
+      }
+      return;
+    }
+    if (tableScroll) tableScroll.hidden = false;
+    if (empty) empty.hidden = true;
+
+    const rows = sessions.map((sess) => {
+      const tr = el("tr");
+      const nameTh = el("th", sess.name, "mono");
+      nameTh.scope = "row";
+
+      const epTd = el("td", sess.endpoint || "—", "mono");
+      const hwTd = el("td", `${sess.hardware || "CPU"} · ${sess.shape || "Standard"} (${sess.variant || "DEFAULT"})`);
+
+      const instTd = el("td");
+      if (sess.instance_id) {
+        const badge = el("span", `${sess.instance_id}`, "nb-badge");
+        badge.dataset.injected = "true";
+        instTd.append(badge);
+      } else {
+        instTd.append(el("span", sess.is_orphan ? "孤儿会话 (未关联)" : "未注入探针", "chart-caption"));
+      }
+
+      const opsTd = el("td");
+      const wrap = el("div", undefined, "ops-btn-group");
+
+      const urlBtn = el("button", "浏览器打开", "ghost-button");
+      urlBtn.type = "button";
+      urlBtn.addEventListener("click", () => openProvisionerSessionUrl(sess.name));
+      wrap.append(urlBtn);
+
+      if (sess.instance_id && (appState.v2Instances || []).some((i) => i.instance_id === sess.instance_id)) {
+        const focusBtn = el("button", "查看监控", "ghost-button keepalive-button");
+        focusBtn.type = "button";
+        focusBtn.addEventListener("click", () => {
+          appState.selectedInstanceId = sess.instance_id;
+          loadSnapshot();
+          showNotice(`已切换至实例 ${sess.instance_id}`);
+        });
+        wrap.append(focusBtn);
+      }
+
+      if (!sess.is_orphan) {
+        const stopBtn = el("button", "停止 VM", "ghost-button danger-button");
+        stopBtn.type = "button";
+        stopBtn.addEventListener("click", () => {
+          openActionConfirmDialog({
+            title: `确认释放 Colab 会话 ${sess.name}`,
+            desc: "将调用 colab stop 立即终止并回收该远端 VM，未保存至 Google Drive 的 /content 本地数据将丢失。",
+            kv: [
+              ["会话名", sess.name],
+              ["Endpoint", sess.endpoint || "—"],
+              ["硬件规格", `${sess.hardware || "CPU"} · ${sess.shape || "Standard"}`]
+            ],
+            trigger: stopBtn,
+            onConfirm: () => stopProvisionerSession(sess.name)
+          });
+        });
+        wrap.append(stopBtn);
+      }
+
+      opsTd.append(wrap);
+      tr.append(nameTh, epTd, hwTd, instTd, opsTd);
+      return tr;
+    });
+    tbody.replaceChildren(...rows);
+  }
+
+  async function loadProvisionerStatus(options = {}) {
+    const refresh = Boolean(options && options.refresh);
+    if (appState.sourceMode === "demo") {
+      if (!appState.demoV2State) appState.demoV2State = createDemoV2State();
+      appState.provisionerStatus = appState.demoV2State.provisioner;
+      renderProvisioner();
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/v2/provisioner/status?refresh=${refresh ? "1" : "0"}`, { cache: "no-store" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      appState.provisionerStatus = data;
+      if (data.active_job && (data.active_job.status === "queued" || data.active_job.status === "running")) {
+        appState.provisionerBooting = true;
+        appState.provisionerActiveJobId = data.active_job.job_id;
+        renderProvisionerJob(data.active_job);
+        if (!appState.provisionerJobTimer) {
+          pollProvisionerJob(data.active_job.job_id);
+        }
+      } else if (!appState.provisionerBooting && Array.isArray(data.recent_jobs) && data.recent_jobs.length && appState.provisionerActiveJobId) {
+        const match = data.recent_jobs.find((j) => j.job_id === appState.provisionerActiveJobId);
+        if (match) renderProvisionerJob(match);
+      }
+      renderProvisioner();
+    } catch (err) {
+      showNotice("读取无头开机状态失败：" + (err?.message || err));
+    }
+  }
+
+  function scheduleProvisionerJobPoll(jobId, delayMs = 2000) {
+    clearProvisionerJobTimer();
+    appState.provisionerJobTimer = window.setTimeout(() => {
+      pollProvisionerJob(jobId);
+    }, delayMs);
+  }
+
+  async function pollProvisionerJob(jobId) {
+    clearProvisionerJobTimer();
+    if (appState.sourceMode !== "live" || !jobId) return;
+    try {
+      const resp = await fetch(`/api/v2/provisioner/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const job = await resp.json();
+      renderProvisionerJob(job);
+      if (job.status === "queued" || job.status === "running") {
+        appState.provisionerBooting = true;
+        renderProvisioner();
+        scheduleProvisionerJobPoll(jobId, 2000);
+        return;
+      }
+      appState.provisionerBooting = false;
+      await loadProvisionerStatus({ refresh: true });
+      if (job.status === "succeeded") {
+        if (job.instance_id) appState.selectedInstanceId = job.instance_id;
+        showNotice(job.instance_id ? `一键开机完成，实例 ${job.instance_id} 已上线。` : `会话 ${job.session_name} 开机完成。`);
+        loadSnapshot();
+      } else {
+        showNotice("一键开机失败：" + (job.error || "未知错误"));
+      }
+    } catch (err) {
+      appState.provisionerBooting = false;
+      renderProvisioner();
+      showNotice("查询开机进度异常：" + (err?.message || err));
+    }
+  }
+
+  async function startProvisionerBoot() {
+    const rtRaw = document.getElementById("provisioner-runtime")?.value || "cpu";
+    const sessionInput = (document.getElementById("provisioner-session")?.value || "").trim();
+    const idleVal = Number(document.getElementById("provisioner-idle")?.value ?? 60);
+    let highMem = Boolean(document.getElementById("provisioner-high-mem")?.checked);
+    const attachAgent = Boolean(document.getElementById("provisioner-attach-agent")?.checked);
+
+    let runtimeType = "cpu";
+    let gpu = "";
+    let tpu = "";
+    if (rtRaw === "cpu:high-mem") {
+      runtimeType = "cpu";
+      highMem = true;
+    } else if (rtRaw.startsWith("gpu:")) {
+      runtimeType = "gpu";
+      gpu = rtRaw.slice(4);
+    } else if (rtRaw.startsWith("tpu:")) {
+      runtimeType = "tpu";
+      tpu = rtRaw.slice(4);
+    }
+
+    if (appState.sourceMode === "demo") {
+      if (!appState.demoV2State) appState.demoV2State = createDemoV2State();
+      const sname = sessionInput || `demo-${gpu || tpu || "cpu"}-01`;
+      const demoJob = {
+        job_id: "demo_boot_1",
+        status: "succeeded",
+        step: "completed",
+        session_name: sname,
+        runtime_spec: rtRaw + (highMem ? "+high-mem" : ""),
+        instance_id: "demo_inst_l4_01",
+        steps_log: [
+          `[演示样本] 正在向 Colab 分配算力 (${sname})…`,
+          "[演示样本] 已上传 colab_agent.py 并注入纯 OAuth2 凭据",
+          "[演示样本] 探针已上线 (oauth_silent)"
+        ]
+      };
+      renderProvisionerJob(demoJob);
+      showNotice(`[演示样本] 已模拟无头开机 ${sname}。`);
+      return;
+    }
+
+    appState.provisionerBooting = true;
+    renderProvisioner();
+    try {
+      const resp = await fetch("/api/v2/provisioner/boot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Colab-Action": "provisioner.boot" },
+        body: JSON.stringify({
+          action: "provisioner.boot",
+          runtime_type: runtimeType,
+          gpu,
+          tpu,
+          high_mem: highMem,
+          session_name: sessionInput,
+          idle_timeout_minutes: Number.isFinite(idleVal) ? idleVal : 60,
+          attach_agent: attachAgent
+        }),
+        cache: "no-store"
+      });
+      const data = await resp.json().catch(() => null);
+      if ((resp.status === 202 || resp.ok) && data && data.job_id) {
+        appState.provisionerActiveJobId = data.job_id;
+        renderProvisionerJob(data);
+        showNotice(`已提交开机任务：${data.session_name}`);
+        scheduleProvisionerJobPoll(data.job_id, 1200);
+      } else {
+        appState.provisionerBooting = false;
+        renderProvisioner();
+        showNotice("发起开机失败：" + (data?.error || `HTTP ${resp.status}`));
+      }
+    } catch (err) {
+      appState.provisionerBooting = false;
+      renderProvisioner();
+      showNotice("发起开机异常：" + (err?.message || err));
+    }
+  }
+
+  async function openProvisionerSessionUrl(sessionName) {
+    if (appState.sourceMode === "demo") {
+      showNotice(`[演示样本] 将在新标签页打开会话 ${sessionName} 的 Colab Web UI。`);
+      return;
+    }
+    try {
+      const resp = await fetch("/api/v2/provisioner/url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Colab-Action": "provisioner.url" },
+        body: JSON.stringify({ action: "provisioner.url", session_name: sessionName }),
+        cache: "no-store"
+      });
+      const data = await resp.json().catch(() => null);
+      if (resp.ok && data && data.ok && data.url) {
+        const parsed = new URL(data.url);
+        if (parsed.protocol === "https:" && parsed.hostname === "colab.research.google.com") {
+          window.open(parsed.toString(), "_blank", "noopener");
+          showNotice(`已在新标签页打开 ${sessionName}。`);
+          return;
+        }
+      }
+      showNotice("获取 Colab 链接失败：" + (data?.error || `HTTP ${resp.status}`));
+    } catch (err) {
+      showNotice("获取 Colab 链接异常：" + (err?.message || err));
+    }
+  }
+
+  async function stopProvisionerSession(sessionName) {
+    if (appState.sourceMode === "demo") {
+      if (appState.demoV2State?.provisioner) {
+        appState.demoV2State.provisioner.sessions = appState.demoV2State.provisioner.sessions.filter(
+          (s) => s.name !== sessionName
+        );
+        renderProvisioner();
+      }
+      showNotice(`[演示样本] 已释放会话 ${sessionName}。`);
+      return;
+    }
+    try {
+      const resp = await fetch("/api/v2/provisioner/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Colab-Action": "provisioner.stop" },
+        body: JSON.stringify({ action: "provisioner.stop", session_name: sessionName }),
+        cache: "no-store"
+      });
+      const data = await resp.json().catch(() => null);
+      if (resp.ok && data && data.ok) {
+        showNotice(data.message || `已释放会话 ${sessionName}。`);
+        await loadProvisionerStatus({ refresh: true });
+        loadSnapshot();
+      } else {
+        showNotice("停止会话失败：" + (data?.error || `HTTP ${resp.status}`));
+      }
+    } catch (err) {
+      showNotice("停止会话异常：" + (err?.message || err));
     }
   }
 
@@ -2602,8 +3398,15 @@
 
     const dlg = document.getElementById("inject-preview-dialog");
     if (!dlg) return;
+    const isDriveApi = nb.source === "drive_api" || String(nb.path || "").startsWith("gdrive://");
     document.getElementById("inject-preview-title").textContent =
       preview.action === "update" ? `升级探针注入：${nb.name}` : `预览探针注入：${nb.name}`;
+    const descEl = document.getElementById("inject-preview-desc");
+    if (descEl) {
+      descEl.textContent = isDriveApi
+        ? "确认后将先在服务端本地备份原 .ipynb，再同步最新 colab_agent.py 至云端 _colab_monitor/，并通过 Drive v3 API 原地写入独立标记单元（不改变链接 ID，不改动原业务单元）。"
+        : "确认后将先在纯本地目录备份原 .ipynb，再同步最新 colab_agent.py 至云盘 _colab_monitor/，并以独立标记单元幂等写入（不改动任何原业务单元）。";
+    }
     const kvItems = [
       ["目标文件", nb.display_path],
       ["检测云盘模式", notebookModeLabel(preview.mode)],
@@ -2620,12 +3423,11 @@
     document.getElementById("inject-preview-code").textContent = preview.cell_source || "";
     appState.pendingInjectTarget = nb;
     appState.lastInjectTrigger = triggerEl || document.activeElement;
-    dlg.showModal();
+    openModalDialog(dlg);
   }
 
   function closeInjectPreviewDialog() {
-    const dlg = document.getElementById("inject-preview-dialog");
-    if (dlg && dlg.open) dlg.close();
+    closeTopLayerDialog(document.getElementById("inject-preview-dialog"));
   }
 
   async function applyNotebookInjection() {
@@ -2700,12 +3502,11 @@
     if (input) input.value = nb.colab_url || "";
     appState.pendingBindTarget = nb;
     appState.lastBindTrigger = triggerEl || document.activeElement;
-    dlg.showModal();
+    openModalDialog(dlg);
   }
 
   function closeBindUrlDialog() {
-    const dlg = document.getElementById("bind-url-dialog");
-    if (dlg && dlg.open) dlg.close();
+    closeTopLayerDialog(document.getElementById("bind-url-dialog"));
   }
 
   async function saveBindUrl(urlValue) {
@@ -2753,6 +3554,9 @@
     syncModeFilterButtons(snap.recent_outputs || []);
     renderOutputsTable();
     syncActionButtons(snap);
+    if (appState.provisionerStatus && !document.getElementById("provisioner-sessions-body")?.contains(document.activeElement)) {
+      renderProvisioner();
+    }
     scheduleSegSync();
   }
 
@@ -2831,6 +3635,12 @@
           cloned.uptime_summary.current_hardware = null;
           cloned.uptime_summary.current_category = null;
           cloned.uptime_summary.current_session_seconds = 0;
+          if (cloned.uptime_summary.compute_units_summary) {
+            cloned.uptime_summary.compute_units_summary.live_rate_hourly = 0;
+            cloned.uptime_summary.compute_units_summary.active_assignments = 0;
+            cloned.uptime_summary.compute_units_summary.estimated_remaining_hours = null;
+            cloned.uptime_summary.compute_units_summary.current_session_units = 0;
+          }
           for (const win of Object.values(cloned.uptime_summary.windows || {})) {
             for (const item of win.items || []) {
               item.is_current = false;
@@ -2842,10 +3652,15 @@
             curWin.gpu_seconds = 0;
             curWin.cpu_only_seconds = 0;
             curWin.unknown_seconds = 0;
+            curWin.total_compute_units = 0;
+            curWin.gpu_compute_units = 0;
+            curWin.cpu_only_compute_units = 0;
             curWin.session_count = 0;
             for (const item of curWin.items || []) {
               item.seconds = 0;
               item.share_pct = 0;
+              item.compute_units = 0;
+              item.compute_units_share_pct = 0;
               item.session_count = 0;
               item.is_current = false;
             }
@@ -2867,10 +3682,12 @@
 
     try {
       const signal = appState.abortController.signal;
+      let v2UptimeSummary = null;
       const v2Resp = await fetch(`/api/v2/instances?limit=${appState.outputLimit}`, { cache: "no-store", signal });
       if (v2Resp.ok) {
         const v2List = await v2Resp.json();
         if (seq !== appState.requestSeq) return;
+        v2UptimeSummary = v2List.uptime_summary || null;
         const instances = Array.isArray(v2List.instances) ? v2List.instances : [];
         appState.v2Instances = instances;
         let targetId = appState.selectedInstanceId;
@@ -2905,6 +3722,15 @@
       }
       const data = await resp.json();
       if (seq !== appState.requestSeq) return;
+      if (
+        !data.online &&
+        v2UptimeSummary &&
+        ((v2UptimeSummary.total_sessions || 0) > 0 ||
+          v2UptimeSummary.compute_units_summary?.account_balance !== null ||
+          (data.uptime_summary?.total_sessions || 0) === 0)
+      ) {
+        data.uptime_summary = v2UptimeSummary;
+      }
       appState.v2Instances = [];
       appState.currentV2Instance = null;
       appState.v2Commands = [];
@@ -3027,9 +3853,10 @@
 
     const snap = appState.snapshot;
     const isDemo = appState.sourceMode === "demo";
+    const hwName = snap?.metrics?.gpu?.available ? (snap.metrics.gpu.name || "GPU") : "当前计算";
     document.getElementById("shutdown-dialog-desc").textContent = isDemo
       ? "[演示样本] 确认后仅在本地模拟实例下线状态，不会连接真实 Colab 实例。"
-      : "即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内执行 os.sync() 并释放 L4 算力。";
+      : `即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内执行 os.sync() 并释放 ${hwName} 算力。`;
 
     const active = Number(snap?.health?.active_jobs || 0);
     const queued = Number(snap?.metrics?.jobs?.queued || 0);
@@ -3054,12 +3881,11 @@
     document.getElementById("shutdown-dialog-kv").replaceChildren(...kvNodes);
 
     appState.lastShutdownTrigger = document.getElementById("shutdown-now");
-    document.getElementById("shutdown-dialog").showModal();
+    openModalDialog(document.getElementById("shutdown-dialog"));
   }
 
   function closeShutdownDialog() {
-    const dialog = document.getElementById("shutdown-dialog");
-    if (dialog.open) dialog.close();
+    closeTopLayerDialog(document.getElementById("shutdown-dialog"));
   }
 
   async function confirmShutdown() {
@@ -3142,18 +3968,25 @@
   function setSourceMode(mode) {
     appState.sourceMode = mode;
     appState.isShuttingDown = false;
+    appState.provisionerBooting = false;
     clearShutdownTimers();
+    clearProvisionerJobTimer();
+    renderProvisionerJob(null);
     if (mode === "demo") {
       appState.demoOnline = true;
       appState.demoIdleSeconds = DEMO_SNAPSHOT.health.idle_seconds;
       appState.demoV2State = createDemoV2State();
       appState.notebooks = appState.demoV2State.notebooks;
+      appState.provisionerStatus = appState.demoV2State.provisioner;
       renderNotebooksCard();
+      renderProvisioner();
     } else {
       appState.selectedInstanceId = null;
       appState.lastLogPayload = null;
       appState.lastProcesses = [];
+      appState.provisionerStatus = null;
       fetchNotebooks();
+      loadProvisionerStatus({ refresh: false });
     }
     for (const btn of document.querySelectorAll("[data-source-choice]")) {
       btn.setAttribute("aria-pressed", String(btn.dataset.sourceChoice === mode));
@@ -3231,11 +4064,21 @@
       });
     }
 
-    // Uptime range switcher inside the uptime card
+    // Uptime range & metric switchers inside the uptime card
     for (const btn of document.querySelectorAll("[data-uptime-range]")) {
       btn.addEventListener("click", () => {
         appState.uptimeRange = btn.dataset.uptimeRange || "all";
         for (const b of document.querySelectorAll("[data-uptime-range]")) {
+          b.setAttribute("aria-pressed", String(b === btn));
+        }
+        renderUptimeCard(appState.snapshot);
+        syncAllSegIndicators(false);
+      });
+    }
+    for (const btn of document.querySelectorAll("[data-uptime-metric]")) {
+      btn.addEventListener("click", () => {
+        appState.uptimeMetric = btn.dataset.uptimeMetric === "units" ? "units" : "time";
+        for (const b of document.querySelectorAll("[data-uptime-metric]")) {
           b.setAttribute("aria-pressed", String(b === btn));
         }
         renderUptimeCard(appState.snapshot);
@@ -3386,6 +4229,7 @@
     // Generic action confirmation dialog
     const actDlg = document.getElementById("action-confirm-dialog");
     if (actDlg) {
+      enhanceModalDialog(actDlg, closeActionConfirmDialog);
       document.getElementById("action-confirm-close")?.addEventListener("click", closeActionConfirmDialog);
       document.getElementById("action-confirm-cancel")?.addEventListener("click", closeActionConfirmDialog);
       document.getElementById("action-confirm-ok")?.addEventListener("click", () => {
@@ -3393,9 +4237,6 @@
         appState.pendingConfirmAction = null;
         closeActionConfirmDialog();
         if (typeof fn === "function") fn();
-      });
-      actDlg.addEventListener("click", (ev) => {
-        if (ev.target === actDlg) closeActionConfirmDialog();
       });
       actDlg.addEventListener("close", () => {
         if (appState.lastConfirmTrigger && appState.lastConfirmTrigger.isConnected && typeof appState.lastConfirmTrigger.focus === "function") {
@@ -3443,10 +4284,8 @@
 
     // Dialog close & focus return
     const dialog = document.getElementById("detail-dialog");
+    enhanceModalDialog(dialog, closeDetailDialog);
     document.getElementById("dialog-close").addEventListener("click", closeDetailDialog);
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) closeDetailDialog();
-    });
     dialog.addEventListener("close", () => {
       let targetEl = null;
       if (
@@ -3476,12 +4315,10 @@
     });
 
     const shutdownDialog = document.getElementById("shutdown-dialog");
+    enhanceModalDialog(shutdownDialog, closeShutdownDialog);
     document.getElementById("shutdown-dialog-close").addEventListener("click", closeShutdownDialog);
     document.getElementById("shutdown-cancel").addEventListener("click", closeShutdownDialog);
     document.getElementById("shutdown-confirm").addEventListener("click", confirmShutdown);
-    shutdownDialog.addEventListener("click", (event) => {
-      if (event.target === shutdownDialog) closeShutdownDialog();
-    });
     shutdownDialog.addEventListener("close", () => {
       if (appState.lastShutdownTrigger && typeof appState.lastShutdownTrigger.focus === "function") {
         appState.lastShutdownTrigger.focus();
@@ -3527,7 +4364,8 @@
       }
     });
 
-    // Plan A Notebook Launcher & Injector bindings
+    // Notebook Launcher & Injector bindings
+    document.getElementById("notebooks-disclosure")?.addEventListener("toggle", () => renderNotebooksCard());
     document.getElementById("notebooks-refresh-btn")?.addEventListener("click", fetchNotebooks);
     document.getElementById("notebooks-toggle-backups")?.addEventListener("click", () => {
       appState.notebooksIncludeBackups = !appState.notebooksIncludeBackups;
@@ -3540,12 +4378,10 @@
 
     const injectDlg = document.getElementById("inject-preview-dialog");
     if (injectDlg) {
+      enhanceModalDialog(injectDlg, closeInjectPreviewDialog);
       document.getElementById("inject-preview-close")?.addEventListener("click", closeInjectPreviewDialog);
       document.getElementById("inject-preview-cancel")?.addEventListener("click", closeInjectPreviewDialog);
       document.getElementById("inject-preview-apply")?.addEventListener("click", applyNotebookInjection);
-      injectDlg.addEventListener("click", (ev) => {
-        if (ev.target === injectDlg) closeInjectPreviewDialog();
-      });
       injectDlg.addEventListener("close", () => {
         if (appState.lastInjectTrigger && appState.lastInjectTrigger.isConnected && typeof appState.lastInjectTrigger.focus === "function") {
           appState.lastInjectTrigger.focus();
@@ -3557,6 +4393,7 @@
 
     const bindDlg = document.getElementById("bind-url-dialog");
     if (bindDlg) {
+      enhanceModalDialog(bindDlg, closeBindUrlDialog);
       document.getElementById("bind-url-close")?.addEventListener("click", closeBindUrlDialog);
       document.getElementById("bind-url-cancel")?.addEventListener("click", closeBindUrlDialog);
       document.getElementById("bind-url-clear")?.addEventListener("click", () => saveBindUrl(""));
@@ -3564,8 +4401,11 @@
         const val = document.getElementById("bind-url-input")?.value || "";
         saveBindUrl(val);
       });
-      bindDlg.addEventListener("click", (ev) => {
-        if (ev.target === bindDlg) closeBindUrlDialog();
+      document.getElementById("bind-url-input")?.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          saveBindUrl(ev.currentTarget.value || "");
+        }
       });
       bindDlg.addEventListener("close", () => {
         if (appState.lastBindTrigger && appState.lastBindTrigger.isConnected && typeof appState.lastBindTrigger.focus === "function") {
@@ -3576,9 +4416,259 @@
       });
     }
 
-    // Initial synchronous seg positioning without animation, then load live snapshot & notebooks
+    document.getElementById("archive-section-summary")?.addEventListener("click", () => {
+      appState.archiveUserToggled = true;
+    });
+
+    // WebUI custom tooltips, display settings popover & custom runtime selector
+    for (const node of document.querySelectorAll("[data-tooltip]")) {
+      attachTooltipTarget(node);
+    }
+    attachTooltipTarget(document.getElementById("provisioner-drive-badge"));
+    setupDisplaySettingsPopover();
+    setupProvisionerRuntimeSelect();
+
+    // Headless CLI + Pure OAuth2 Provisioner bindings
+    document.getElementById("provisioner-refresh-btn")?.addEventListener("click", () => {
+      loadProvisionerStatus({ refresh: true });
+    });
+    document.getElementById("provisioner-boot-btn")?.addEventListener("click", startProvisionerBoot);
+
+    // Initial synchronous seg positioning without animation, then load live snapshot, provisioner & notebooks
     syncAllSegIndicators(true);
     loadSnapshot();
+    loadProvisionerStatus({ refresh: false });
     fetchNotebooks();
   });
+
+  function positionAnchoredPopoverFallback(trigger, panel, topVar, leftVar, alignEnd = false) {
+    if (window.CSS && typeof window.CSS.supports === "function" && window.CSS.supports("position-area: block-end")) {
+      return;
+    }
+    const rect = trigger.getBoundingClientRect();
+    const panelW = Math.max(rect.width, panel.offsetWidth || 320);
+    const maxH = Math.min(384, window.innerHeight - 32);
+    let top = rect.bottom + 6;
+    if (top + maxH > window.innerHeight - 12 && rect.top > window.innerHeight - rect.bottom) {
+      top = Math.max(12, rect.top - Math.min(maxH, panel.scrollHeight || 320) - 6);
+    }
+    const rawLeft = alignEnd ? rect.right - panelW : rect.left;
+    const left = Math.max(12, Math.min(rawLeft, window.innerWidth - panelW - 12));
+    panel.style.setProperty(topVar, `${Math.round(top)}px`);
+    panel.style.setProperty(leftVar, `${Math.round(left)}px`);
+  }
+
+  function setupDisplaySettingsPopover() {
+    const trigger = document.getElementById("display-settings-trigger");
+    const panel = document.getElementById("display-popover");
+    if (!trigger || !panel) return;
+
+    const hasNativePopover = Object.hasOwn(HTMLElement.prototype, "popover");
+    const isOpen = () => (hasNativePopover ? panel.matches(":popover-open") : panel.dataset.open === "true");
+
+    const onOpen = () => {
+      positionAnchoredPopoverFallback(trigger, panel, "--pop-top", "--pop-left", true);
+      window.requestAnimationFrame(() => syncAllSegIndicators(true));
+    };
+
+    const closePanel = (restoreFocus = false) => {
+      if (!isOpen()) return;
+      if (hasNativePopover) panel.hidePopover();
+      else {
+        delete panel.dataset.open;
+        trigger.setAttribute("aria-expanded", "false");
+      }
+      if (restoreFocus) trigger.focus();
+    };
+
+    if (hasNativePopover) {
+      panel.addEventListener("toggle", (ev) => {
+        const open = ev.newState === "open";
+        trigger.setAttribute("aria-expanded", String(open));
+        if (open) onOpen();
+      });
+    } else {
+      document.addEventListener("pointerdown", (ev) => {
+        if (isOpen() && !panel.contains(ev.target) && !trigger.contains(ev.target)) {
+          closePanel(false);
+        }
+      });
+    }
+
+    panel.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closePanel(true);
+      }
+    });
+
+    trigger.addEventListener("click", () => {
+      if (isOpen()) {
+        closePanel(false);
+      } else if (hasNativePopover) {
+        panel.showPopover();
+        onOpen();
+      } else {
+        panel.dataset.open = "true";
+        trigger.setAttribute("aria-expanded", "true");
+        onOpen();
+      }
+    });
+  }
+
+  function setupProvisionerRuntimeSelect() {
+    const hiddenInput = document.getElementById("provisioner-runtime");
+    const trigger = document.getElementById("provisioner-runtime-trigger");
+    const valueEl = document.getElementById("provisioner-runtime-value");
+    const rateEl = document.getElementById("provisioner-runtime-rate");
+    const menu = document.getElementById("provisioner-runtime-menu");
+    const highMemBox = document.getElementById("provisioner-high-mem");
+    const highMemLabel = document.getElementById("provisioner-high-mem-label");
+    if (!hiddenInput || !trigger || !valueEl || !rateEl || !menu) return;
+
+    if (highMemLabel) attachTooltipTarget(highMemLabel);
+    const options = [...menu.querySelectorAll(".webui-select-option")];
+    const hasNativePopover = Object.hasOwn(HTMLElement.prototype, "popover");
+
+    const positionMenu = () => positionAnchoredPopoverFallback(trigger, menu, "--dd-top", "--dd-left", false);
+    const isMenuOpen = () => (hasNativePopover ? menu.matches(":popover-open") : menu.dataset.open === "true");
+
+    const focusOptionByMode = (mode) => {
+      if (!options.length) return;
+      let target = options.find((o) => o.dataset.value === hiddenInput.value) || options[0];
+      if (mode === "first") target = options[0];
+      else if (mode === "last") target = options[options.length - 1];
+      target.focus();
+    };
+
+    const openMenu = (focusMode = "selected") => {
+      positionMenu();
+      if (hasNativePopover) {
+        if (!menu.matches(":popover-open")) menu.showPopover();
+      } else {
+        menu.dataset.open = "true";
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      positionMenu();
+      window.requestAnimationFrame(() => focusOptionByMode(focusMode));
+    };
+
+    const closeMenu = (restoreFocus = false) => {
+      if (!isMenuOpen()) return;
+      if (hasNativePopover) {
+        menu.hidePopover();
+      } else {
+        delete menu.dataset.open;
+        trigger.setAttribute("aria-expanded", "false");
+      }
+      if (restoreFocus) trigger.focus();
+    };
+
+    const syncHighMemUi = () => {
+      const opt = options.find((o) => o.dataset.value === hiddenInput.value);
+      const baseRate = opt?.dataset.rate || "";
+      if (hiddenInput.value === "gpu:T4" && highMemBox?.checked) {
+        rateEl.textContent = "≈1.96+ CU/h · 高内存";
+      } else {
+        rateEl.textContent = baseRate;
+      }
+      if (highMemLabel) {
+        const isPresetHighMem = hiddenInput.value !== "cpu" && hiddenInput.value !== "cpu:high-mem" && hiddenInput.value !== "gpu:T4";
+        if (isPresetHighMem) {
+          highMemLabel.dataset.tooltip = "L4 / A100 / H100 / TPU 默认已配备大内存；--high-mem 主要用于 CPU 与 T4";
+        } else {
+          delete highMemLabel.dataset.tooltip;
+        }
+      }
+    };
+
+    const selectValue = (val, syncHighMem = true) => {
+      const opt = options.find((o) => o.dataset.value === val) || options[0];
+      if (!opt) return;
+      hiddenInput.value = opt.dataset.value;
+      valueEl.textContent = opt.dataset.label || "";
+      for (const item of options) {
+        item.setAttribute("aria-selected", String(item === opt));
+      }
+      if (syncHighMem && highMemBox) {
+        if (opt.dataset.value === "cpu:high-mem") highMemBox.checked = true;
+        else if (opt.dataset.value === "cpu") highMemBox.checked = false;
+      }
+      syncHighMemUi();
+    };
+
+    if (hasNativePopover) {
+      menu.addEventListener("toggle", (ev) => {
+        const open = ev.newState === "open";
+        trigger.setAttribute("aria-expanded", String(open));
+        if (open) positionMenu();
+      });
+    } else {
+      document.addEventListener("pointerdown", (ev) => {
+        if (isMenuOpen() && !menu.contains(ev.target) && !trigger.contains(ev.target)) {
+          closeMenu(false);
+        }
+      });
+    }
+
+    trigger.addEventListener("click", () => {
+      if (isMenuOpen()) closeMenu(false);
+      else openMenu("selected");
+    });
+
+    trigger.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowDown" || ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        openMenu("selected");
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        openMenu("last");
+      }
+    });
+
+    menu.addEventListener("keydown", (ev) => {
+      const idx = options.indexOf(document.activeElement);
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        const next = options[(idx + 1 + options.length) % options.length];
+        next?.focus();
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        const prev = options[(idx - 1 + options.length) % options.length];
+        prev?.focus();
+      } else if (ev.key === "Home") {
+        ev.preventDefault();
+        options[0]?.focus();
+      } else if (ev.key === "End") {
+        ev.preventDefault();
+        options[options.length - 1]?.focus();
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeMenu(true);
+      } else if (ev.key === "Tab") {
+        closeMenu(false);
+      }
+    });
+
+    for (const opt of options) {
+      opt.addEventListener("click", () => {
+        selectValue(opt.dataset.value, true);
+        closeMenu(true);
+      });
+    }
+
+    highMemBox?.addEventListener("change", () => {
+      if (highMemBox.checked && hiddenInput.value === "cpu") {
+        selectValue("cpu:high-mem", false);
+      } else if (!highMemBox.checked && hiddenInput.value === "cpu:high-mem") {
+        selectValue("cpu", false);
+      } else {
+        syncHighMemUi();
+      }
+    });
+
+    selectValue(hiddenInput.value || "cpu", false);
+  }
 })();

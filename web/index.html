@@ -55,26 +55,50 @@
         </div>
 
         <button class="ghost-button" type="button" id="refresh-now">立即刷新</button>
-        <button class="ghost-button keepalive-button" type="button" id="keepalive-now" title="重置 Colab 空闲自动关机计时器（不提交推理任务）">手动保活</button>
-        <button class="ghost-button drain-button" type="button" id="drain-toggle" title="跑完当前在途任务并同步云盘后自动释放实例">跑完即停</button>
-        <button class="ghost-button danger-button" type="button" id="shutdown-now" title="远程关闭并释放 Colab 实例">一键关机</button>
+        <button class="ghost-button keepalive-button" type="button" id="keepalive-now" data-tooltip="重置 Colab 空闲自动关机计时器（不提交推理任务）">手动保活</button>
+        <button class="ghost-button drain-button" type="button" id="drain-toggle" data-tooltip="跑完当前在途任务并同步云盘后自动释放实例">跑完即停</button>
+        <button class="ghost-button danger-button" type="button" id="shutdown-now" data-tooltip="远程关闭并释放 Colab 实例">一键关机</button>
       </div>
 
       <div class="toolbar-display">
+        <button
+          class="ghost-button display-popover-trigger"
+          type="button"
+          id="display-settings-trigger"
+          aria-expanded="false"
+          aria-controls="display-popover">
+          <span>外观设置</span>
+          <svg class="webui-select-chevron" aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 6l4 4 4-4"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="display-popover" id="display-popover" popover="auto" aria-label="外观与主题设置">
+      <div class="display-popover-row">
+        <span class="ops-label">配色方案</span>
         <div class="control-set seg-small" data-seg role="group" aria-label="配色方案">
           <button type="button" data-palette-choice="sage" aria-pressed="true" disabled>Sage</button>
           <button type="button" data-palette-choice="ash-marble" aria-pressed="false" disabled>Ash Marble</button>
         </div>
-        <span class="toolbar-sep" role="separator" aria-orientation="vertical"></span>
+      </div>
+      <div class="display-popover-row">
+        <span class="ops-label">Ash 浅色调</span>
         <div class="control-set seg-small" data-seg role="group" aria-label="Ash 浅色调">
           <button type="button" data-tone-choice="pale" aria-pressed="true" disabled>苍白</button>
           <button type="button" data-tone-choice="gray" aria-pressed="false" disabled>苍灰</button>
         </div>
-        <span class="toolbar-sep" role="separator" aria-orientation="vertical"></span>
+      </div>
+      <div class="display-popover-row">
+        <span class="ops-label">Ash 浅色材质</span>
         <div class="control-set seg-small" data-seg role="group" aria-label="Ash 浅色材质">
           <button type="button" data-material-choice="marble" aria-pressed="true" disabled>石纹</button>
           <button type="button" data-material-choice="flat" aria-pressed="false" disabled>纯色</button>
         </div>
+      </div>
+      <div class="display-popover-row">
+        <span class="ops-label">主题模式</span>
         <button class="ghost-button" type="button" id="theme-mode" disabled>主题：自动</button>
       </div>
     </div>
@@ -131,11 +155,169 @@
     </section>
 
     <div class="grid">
+      <article class="card span-12" id="provisioner-card" aria-labelledby="provisioner-title">
+        <div class="card-head uptime-card-head">
+          <div class="uptime-title-group">
+            <h2 id="provisioner-title">Colab 无头一键开机（CLI + 纯 OAuth2 Drive API）</h2>
+            <span id="provisioner-subtitle">服务端通过 google-colab-cli 分配 VM 并经纯 OAuth2 Drive v3 API 自动上线探针（零 FUSE / 零浏览器交互）</span>
+          </div>
+          <div class="ops-btn-group">
+            <span class="nb-badge" id="provisioner-ccu-badge">积分余额：—</span>
+            <span class="nb-badge" id="provisioner-cli-badge">CLI：检测中</span>
+            <span class="nb-badge" id="provisioner-drive-badge">OAuth2 Drive：检测中</span>
+            <button class="ghost-button" type="button" id="provisioner-refresh-btn">刷新会话</button>
+          </div>
+        </div>
+
+        <div class="provisioner-form">
+          <div class="provisioner-field">
+            <label class="ops-label" id="provisioner-runtime-label" for="provisioner-runtime-trigger">算力规格</label>
+            <div class="webui-select" id="provisioner-runtime-wrap">
+              <input type="hidden" id="provisioner-runtime" value="cpu">
+              <button
+                class="search-input webui-select-trigger"
+                type="button"
+                id="provisioner-runtime-trigger"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="provisioner-runtime-menu"
+                aria-labelledby="provisioner-runtime-label provisioner-runtime-value">
+                <span class="webui-select-value" id="provisioner-runtime-value">CPU（标准内存 · ~12.7 GiB）</span>
+                <span class="webui-select-rate mono" id="provisioner-runtime-rate">≈0.10 CU/h</span>
+                <svg class="webui-select-chevron" aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 6l4 4 4-4"></path>
+                </svg>
+              </button>
+              <div class="webui-select-menu" id="provisioner-runtime-menu" popover="auto" role="listbox" aria-labelledby="provisioner-runtime-label">
+                <div class="webui-select-group" role="group" aria-labelledby="rt-group-cpu">
+                  <div class="webui-select-group-label" id="rt-group-cpu">CPU 算力</div>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="true" data-value="cpu" data-label="CPU（标准内存 · ~12.7 GiB）" data-rate="≈0.10 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">CPU（标准内存 · ~12.7 GiB）</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈0.10 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="cpu:high-mem" data-label="CPU（高内存 High-RAM · ~51 GiB）" data-rate="≈1.20 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">CPU（高内存 High-RAM · ~51 GiB）</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈1.20 CU/h</span>
+                  </button>
+                </div>
+                <div class="webui-select-group" role="group" aria-labelledby="rt-group-gpu">
+                  <div class="webui-select-group-label" id="rt-group-gpu">GPU 算力</div>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="gpu:T4" data-label="GPU · T4" data-rate="≈1.96 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">GPU · T4</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈1.96 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="gpu:L4" data-label="GPU · L4" data-rate="≈4.82 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">GPU · L4</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈4.82 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="gpu:A100" data-label="GPU · A100" data-rate="≈11.77 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">GPU · A100</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈11.77 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="gpu:H100" data-label="GPU · H100" data-rate="≈14.50 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">GPU · H100</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈14.50 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="gpu:G4" data-label="GPU · G4" data-rate="≈5.00 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">GPU · G4</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈5.00 CU/h</span>
+                  </button>
+                </div>
+                <div class="webui-select-group" role="group" aria-labelledby="rt-group-tpu">
+                  <div class="webui-select-group-label" id="rt-group-tpu">TPU 算力</div>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="tpu:v5e1" data-label="TPU · v5e1" data-rate="≈2.00 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">TPU · v5e1</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈2.00 CU/h</span>
+                  </button>
+                  <button type="button" class="webui-select-option" role="option" aria-selected="false" data-value="tpu:v6e1" data-label="TPU · v6e1" data-rate="≈2.00 CU/h">
+                    <span class="webui-select-opt-main">
+                      <span class="webui-select-opt-check" aria-hidden="true">✓</span>
+                      <span class="webui-select-opt-text">TPU · v6e1</span>
+                    </span>
+                    <span class="webui-select-opt-rate mono">≈2.00 CU/h</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="provisioner-field">
+            <label class="ops-label" for="provisioner-session">会话名（可选）</label>
+            <input class="search-input" type="text" id="provisioner-session" placeholder="留空自动生成" maxlength="48" autocomplete="off">
+          </div>
+
+          <div class="provisioner-field">
+            <label class="ops-label" for="provisioner-idle">空闲关机(分)</label>
+            <input class="search-input provisioner-input-sm" type="number" id="provisioner-idle" min="0" max="360" value="60">
+          </div>
+
+          <label class="provisioner-check" id="provisioner-high-mem-label">
+            <input type="checkbox" id="provisioner-high-mem">
+            <span>高内存 (--high-mem)</span>
+          </label>
+
+          <label class="provisioner-check">
+            <input type="checkbox" id="provisioner-attach-agent" checked>
+            <span>注入纯 OAuth2 探针</span>
+          </label>
+
+          <button class="ghost-button primary-button" type="button" id="provisioner-boot-btn">一键开机</button>
+        </div>
+
+        <div class="provisioner-job-box" id="provisioner-job-status" role="status" aria-live="polite" hidden>
+          <div class="ops-row">
+            <strong id="provisioner-job-title">准备开机…</strong>
+          </div>
+          <pre class="log-viewer" id="provisioner-job-log"></pre>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="provisioner-table-caption">
+          <table>
+            <caption id="provisioner-table-caption">google-colab-cli 活跃云端会话列表</caption>
+            <thead>
+              <tr>
+                <th scope="col">会话名</th>
+                <th scope="col">Endpoint</th>
+                <th scope="col">硬件规格</th>
+                <th scope="col">关联监控实例</th>
+                <th scope="col">操作</th>
+              </tr>
+            </thead>
+            <tbody id="provisioner-sessions-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="provisioner-sessions-empty" hidden>当前无运行中的 Colab CLI 会话。</div>
+      </article>
+
       <article class="card span-12" id="notebooks-card" aria-labelledby="notebooks-title">
         <div class="card-head uptime-card-head">
           <div class="uptime-title-group">
-            <h2 id="notebooks-title">Colab 笔记本启动器与安全注入（方案 A）</h2>
-            <span id="notebooks-subtitle">扫描云盘 .ipynb：先预览再幂等注入探针（自动本地备份），一键唤起浏览器后按 ⌘+F9 全部运行</span>
+            <h2 id="notebooks-title">Colab 笔记本启动器与安全注入</h2>
+            <span id="notebooks-subtitle">同时扫描纯 OAuth2 Google Drive API 与本地挂载目录 .ipynb：免挂载直达、预览再幂等注入探针（本地自动备份）</span>
           </div>
           <div class="ops-btn-group">
             <button class="ghost-button" type="button" id="notebooks-toggle-backups" aria-pressed="false">显示备份/副本</button>
@@ -143,27 +325,33 @@
           </div>
         </div>
 
-        <div class="card-tools">
-          <input class="search-input" type="search" id="notebooks-search" placeholder="检索笔记本名称或路径…" aria-label="检索笔记本名称或路径">
-          <span class="chart-caption" id="notebooks-count-label">—</span>
-        </div>
+        <details class="notebooks-disclosure" id="notebooks-disclosure">
+          <summary class="notebooks-disclosure-summary" id="notebooks-disclosure-summary">
+            <span id="notebooks-disclosure-text">展开笔记本列表（正在扫描…）</span>
+          </summary>
 
-        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="notebooks-table-caption">
-          <table>
-            <caption id="notebooks-table-caption">Google Drive 本地挂载目录中的 Colab 笔记本列表与探针注入状态</caption>
-            <thead>
-              <tr>
-                <th scope="col">笔记本名称 / 路径</th>
-                <th scope="col">云盘模式</th>
-                <th scope="col">探针状态</th>
-                <th scope="col">直达链接</th>
-                <th scope="col">启动与注入操作</th>
-              </tr>
-            </thead>
-            <tbody id="notebooks-table-body"></tbody>
-          </table>
-        </div>
-        <div class="empty-state" id="notebooks-empty" hidden>未扫描到符合条件的 .ipynb 文件。</div>
+          <div class="card-tools">
+            <input class="search-input" type="search" id="notebooks-search" placeholder="检索笔记本名称或路径…" aria-label="检索笔记本名称或路径">
+            <span class="chart-caption" id="notebooks-count-label">—</span>
+          </div>
+
+          <div class="table-scroll notebooks-table-scroll" tabindex="0" role="region" aria-labelledby="notebooks-table-caption">
+            <table>
+              <caption id="notebooks-table-caption">Google Drive 云端（OAuth2 API）与本地挂载目录中的 Colab 笔记本列表与探针注入状态</caption>
+              <thead>
+                <tr>
+                  <th scope="col">笔记本名称 / 路径</th>
+                  <th scope="col">云盘模式</th>
+                  <th scope="col">探针状态</th>
+                  <th scope="col">直达链接</th>
+                  <th scope="col">启动与注入操作</th>
+                </tr>
+              </thead>
+              <tbody id="notebooks-table-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="notebooks-empty" hidden>未扫描到符合条件的 .ipynb 文件。</div>
+        </details>
       </article>
 
       <article class="card span-6" id="control-ops-card" aria-labelledby="control-ops-title">
@@ -310,14 +498,20 @@
       <article class="card ash-marble-card span-12" id="uptime-card" aria-labelledby="uptime-title">
         <div class="card-head uptime-card-head">
           <div class="uptime-title-group">
-            <h2 id="uptime-title">机器累计开机时间（分 GPU 含 CPU Only）</h2>
+            <h2 id="uptime-title">机器累计开机时间与积分消耗（分 GPU 含标准 / 高内存 CPU Only）</h2>
             <span id="uptime-subtitle">正在读取本地累计账本…</span>
           </div>
-          <div class="control-set seg-small" data-seg id="uptime-range-group" role="group" aria-label="开机时间统计周期">
-            <button type="button" data-uptime-range="all" aria-pressed="true">全部累计</button>
-            <button type="button" data-uptime-range="today" aria-pressed="false">今日</button>
-            <button type="button" data-uptime-range="7d" aria-pressed="false">近 7 天</button>
-            <button type="button" data-uptime-range="current" aria-pressed="false">当前会话</button>
+          <div class="ops-btn-group">
+            <div class="control-set seg-small" data-seg id="uptime-metric-group" role="group" aria-label="开机统计维度">
+              <button type="button" data-uptime-metric="time" aria-pressed="true">按时长</button>
+              <button type="button" data-uptime-metric="units" aria-pressed="false">按积分 (CU)</button>
+            </div>
+            <div class="control-set seg-small" data-seg id="uptime-range-group" role="group" aria-label="开机时间统计周期">
+              <button type="button" data-uptime-range="all" aria-pressed="true">全部累计</button>
+              <button type="button" data-uptime-range="today" aria-pressed="false">今日</button>
+              <button type="button" data-uptime-range="7d" aria-pressed="false">近 7 天</button>
+              <button type="button" data-uptime-range="current" aria-pressed="false">当前会话</button>
+            </div>
           </div>
         </div>
 
@@ -325,7 +519,7 @@
 
         <div class="capacity-block" id="uptime-capacity-block">
           <div class="dist-head">
-            <span class="dist-label">各硬件开机时长构成（GPU 型号与 CPU Only）</span>
+            <span class="dist-label" id="uptime-dist-title">各硬件开机时长构成（GPU 型号与标准 / 高内存 CPU Only）</span>
             <span class="dist-value" id="uptime-total-label">—</span>
           </div>
           <div class="capacity-bar" id="uptime-capacity-bar" role="img" aria-labelledby="uptime-title" aria-describedby="uptime-caption"></div>
@@ -333,13 +527,13 @@
         </div>
 
         <div class="distribution" id="uptime-distribution" role="img" aria-labelledby="uptime-title" aria-describedby="uptime-caption"></div>
-        <p class="chart-caption" id="uptime-caption">分母为所选统计周期内的总在线时长；无 GPU 实例归入 CPU Only，离线空窗期不计入。</p>
+        <p class="chart-caption" id="uptime-caption">分母为所选统计周期内的总在线时长；无 GPU 实例按内存区分 CPU Only（标准 ≈0.10 CU/h）与 CPU Only (High-RAM ≈1.20 CU/h)，离线空窗期不计入。</p>
 
         <details>
-          <summary>查看分 GPU 与 CPU Only 精确开机明细</summary>
+          <summary>查看分 GPU 与标准 / 高内存 CPU Only 精确开机与积分明细</summary>
           <div class="table-scroll" tabindex="0" role="region" aria-labelledby="uptime-table-caption">
             <table>
-              <caption id="uptime-table-caption">各硬件型号（含 CPU Only）累计开机时间与会话统计</caption>
+              <caption id="uptime-table-caption">各硬件型号（含标准与高内存 CPU Only）累计开机时间、费率与积分消耗统计</caption>
               <thead>
                 <tr>
                   <th scope="col">硬件型号</th>
@@ -348,6 +542,9 @@
                   <th scope="col" class="numeric">累计时长</th>
                   <th scope="col" class="numeric">精确秒数</th>
                   <th scope="col" class="numeric">时长占比</th>
+                  <th scope="col" class="numeric">费率 (CU/h)</th>
+                  <th scope="col" class="numeric">积分消耗 (CU)</th>
+                  <th scope="col" class="numeric">积分占比</th>
                   <th scope="col">最近在线</th>
                 </tr>
               </thead>
@@ -358,75 +555,80 @@
         </details>
       </article>
 
-      <article class="card ash-marble-card span-12" aria-labelledby="trend-title">
-        <div class="card-head">
-          <h2 id="trend-title">云盘归档出图 GPU 耗时</h2>
-          <span id="trend-subtitle">按时间正序（左旧右新），点击或回车查看单次详情</span>
-        </div>
-
-        <div class="chart-scroll" tabindex="0" role="region" aria-label="出图耗时柱状图，可横向滚动">
-          <div class="trend-visual" id="trend-visual">
-            <div class="plot">
-              <div class="yaxis" id="elapsed-yaxis" aria-hidden="true"></div>
-              <div class="graph" id="elapsed-bars"></div>
+      <details class="archive-section span-12" id="archive-cards-disclosure">
+        <summary class="archive-section-summary" id="archive-section-summary">云盘出图归档与耗时分析（outputs/h3_*.json · 点击展开）</summary>
+        <div class="archive-section-grid">
+          <article class="card ash-marble-card span-12" aria-labelledby="trend-title">
+            <div class="card-head">
+              <h2 id="trend-title">云盘归档出图 GPU 耗时</h2>
+              <span id="trend-subtitle">按时间正序（左旧右新），点击或回车查看单次详情</span>
             </div>
-            <div class="xaxis" id="elapsed-xaxis" aria-hidden="true"></div>
-          </div>
-        </div>
-        <p class="chart-caption" id="elapsed-caption">零基线，纵轴单位为秒（s）。缺省耗时记录显示为 —，不记为 0。</p>
-      </article>
 
-      <article class="card ash-marble-card span-12" aria-labelledby="outputs-title">
-        <div class="card-head">
-          <h2 id="outputs-title">云盘归档出图明细（outputs/h3_*.json）</h2>
-          <span id="outputs-count-label">—</span>
-        </div>
+            <div class="chart-scroll" tabindex="0" role="region" aria-label="出图耗时柱状图，可横向滚动">
+              <div class="trend-visual" id="trend-visual">
+                <div class="plot">
+                  <div class="yaxis" id="elapsed-yaxis" aria-hidden="true"></div>
+                  <div class="graph" id="elapsed-bars"></div>
+                </div>
+                <div class="xaxis" id="elapsed-xaxis" aria-hidden="true"></div>
+              </div>
+            </div>
+            <p class="chart-caption" id="elapsed-caption">零基线，纵轴单位为秒（s）。缺省耗时记录显示为 —，不记为 0。</p>
+          </article>
 
-        <div class="card-tools">
-          <div class="control-set seg-small" data-seg id="mode-filter-group" role="group" aria-label="按生成模式筛选">
-            <button type="button" data-mode-filter="all" aria-pressed="true">全部模式</button>
-          </div>
-          <input
-            class="search-input"
-            type="search"
-            id="output-search"
-            placeholder="检索文件名或 Prompt 关键词…"
-            aria-label="检索归档文件名或 Prompt 关键词"
-          >
-        </div>
+          <article class="card ash-marble-card span-12" aria-labelledby="outputs-title">
+            <div class="card-head">
+              <h2 id="outputs-title">云盘归档出图明细（outputs/h3_*.json）</h2>
+              <span id="outputs-count-label">—</span>
+            </div>
 
-        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="outputs-table-caption">
-          <table>
-            <caption id="outputs-table-caption">本地挂载目录 outputs/h3_*.json 归档元数据（只读）</caption>
-            <thead>
-              <tr>
-                <th scope="col" id="th-file" aria-sort="none">
-                  <button class="sort-button" type="button" data-sort-key="file">文件名</button>
-                </th>
-                <th scope="col" id="th-mode" aria-sort="none">
-                  <button class="sort-button" type="button" data-sort-key="mode">模式</button>
-                </th>
-                <th scope="col" id="th-mp" class="numeric" aria-sort="none">
-                  <button class="sort-button numeric" type="button" data-sort-key="mp">分辨率 / 像素</button>
-                </th>
-                <th scope="col" id="th-refs" class="numeric" aria-sort="none">
-                  <button class="sort-button numeric" type="button" data-sort-key="refs">参考图</button>
-                </th>
-                <th scope="col" id="th-elapsed" class="numeric" aria-sort="none">
-                  <button class="sort-button numeric" type="button" data-sort-key="elapsed_sec">GPU 耗时</button>
-                </th>
-                <th scope="col">量化档位</th>
-                <th scope="col" id="th-created" aria-sort="descending">
-                  <button class="sort-button" type="button" data-sort-key="created_at_full">创建时间</button>
-                </th>
-                <th scope="col">操作</th>
-              </tr>
-            </thead>
-            <tbody id="outputs-table-body"></tbody>
-          </table>
+            <div class="card-tools">
+              <div class="control-set seg-small" data-seg id="mode-filter-group" role="group" aria-label="按生成模式筛选">
+                <button type="button" data-mode-filter="all" aria-pressed="true">全部模式</button>
+              </div>
+              <input
+                class="search-input"
+                type="search"
+                id="output-search"
+                placeholder="检索文件名或 Prompt 关键词…"
+                aria-label="检索归档文件名或 Prompt 关键词"
+              >
+            </div>
+
+            <div class="table-scroll" tabindex="0" role="region" aria-labelledby="outputs-table-caption">
+              <table>
+                <caption id="outputs-table-caption">本地挂载目录 outputs/h3_*.json 归档元数据（只读）</caption>
+                <thead>
+                  <tr>
+                    <th scope="col" id="th-file" aria-sort="none">
+                      <button class="sort-button" type="button" data-sort-key="file">文件名</button>
+                    </th>
+                    <th scope="col" id="th-mode" aria-sort="none">
+                      <button class="sort-button" type="button" data-sort-key="mode">模式</button>
+                    </th>
+                    <th scope="col" id="th-mp" class="numeric" aria-sort="none">
+                      <button class="sort-button numeric" type="button" data-sort-key="mp">分辨率 / 像素</button>
+                    </th>
+                    <th scope="col" id="th-refs" class="numeric" aria-sort="none">
+                      <button class="sort-button numeric" type="button" data-sort-key="refs">参考图</button>
+                    </th>
+                    <th scope="col" id="th-elapsed" class="numeric" aria-sort="none">
+                      <button class="sort-button numeric" type="button" data-sort-key="elapsed_sec">GPU 耗时</button>
+                    </th>
+                    <th scope="col">量化档位</th>
+                    <th scope="col" id="th-created" aria-sort="descending">
+                      <button class="sort-button" type="button" data-sort-key="created_at_full">创建时间</button>
+                    </th>
+                    <th scope="col">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="outputs-table-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="outputs-empty" hidden>暂无匹配的归档记录。</div>
+          </article>
         </div>
-        <div class="empty-state" id="outputs-empty" hidden>暂无匹配的归档记录。</div>
-      </article>
+      </details>
 
       <article class="card span-12" id="inspector-card" aria-labelledby="inspector-title">
         <div class="card-head uptime-card-head">
@@ -482,7 +684,7 @@
     </div>
 
     <footer>
-      <p id="footer-source">数据来源：h3_cli_monitor.py 采集接口（GET /health、GET /v1/metrics 与本地 outputs/h3_*.json）。自动轮询保持严格只读、不会重置空闲计时器；仅手动点击「手动保活」或「一键关机」时由服务端代发鉴权请求，不向浏览器暴露 api_key。</p>
+      <p id="footer-source">数据来源：v2 多实例控制平面、google-colab-cli、纯 OAuth2 Google Drive v3 API 及 Legacy 网关只读探针。自动轮询严格只读、不重置空闲计时器；写操作与关机指令由服务端代签/代发，不向浏览器暴露密钥或 api_key。</p>
       <p>界面遵循 Sage Design Paradigm v1.1.0（含可选 Ash Marble 苍白/苍灰主题）。已本地托管 OFL-1.1 字体 Space Grotesk / Noto Sans SC / Space Mono（离线可用，不回退微软雅黑）。</p>
     </footer>
     <noscript><p class="status-banner" data-severity="warning">脚本不可用：实时监控轮询、主题同步与图表渲染需要启用 JavaScript；未加载指标均保持为 —，不将缺失值显示为零。</p></noscript>
@@ -493,10 +695,10 @@
     <div class="tooltip-meta" id="tooltip-meta"></div>
   </div>
 
-  <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="dialog-title">
+  <dialog class="detail-dialog" id="detail-dialog" closedby="any" aria-labelledby="dialog-title">
     <div class="dialog-head">
       <h2 id="dialog-title">出图归档详情</h2>
-      <button class="ghost-button" type="button" id="dialog-close" aria-label="关闭详情对话框">关闭</button>
+      <button class="ghost-button" type="button" id="dialog-close" aria-label="关闭详情对话框" autofocus>关闭</button>
     </div>
     <div class="dialog-body">
       <img class="dialog-preview" id="dialog-image" alt="" hidden>
@@ -514,23 +716,23 @@
     </div>
   </dialog>
 
-  <dialog class="detail-dialog confirm-dialog" id="shutdown-dialog" aria-labelledby="shutdown-dialog-title" aria-describedby="shutdown-dialog-desc">
+  <dialog class="detail-dialog confirm-dialog" id="shutdown-dialog" closedby="any" aria-labelledby="shutdown-dialog-title" aria-describedby="shutdown-dialog-desc">
     <div class="dialog-head">
       <h2 id="shutdown-dialog-title">确认释放 Colab 实例</h2>
       <button class="ghost-button" type="button" id="shutdown-dialog-close" aria-label="关闭关机确认对话框">关闭</button>
     </div>
     <div class="dialog-body">
-      <p id="shutdown-dialog-desc">即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内安全同步并释放 L4 算力。</p>
+      <p id="shutdown-dialog-desc">即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内安全同步并释放当前计算算力。</p>
       <p class="confirm-warning" id="shutdown-dialog-warning" hidden></p>
       <dl class="dialog-kv" id="shutdown-dialog-kv"></dl>
       <div class="dialog-actions confirm-actions">
-        <button class="ghost-button" type="button" id="shutdown-cancel">取消</button>
+        <button class="ghost-button" type="button" id="shutdown-cancel" autofocus>取消</button>
         <button class="ghost-button danger-solid-button" type="button" id="shutdown-confirm">确认释放实例</button>
       </div>
     </div>
   </dialog>
 
-  <dialog class="detail-dialog confirm-dialog" id="action-confirm-dialog" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-desc">
+  <dialog class="detail-dialog confirm-dialog" id="action-confirm-dialog" closedby="any" aria-labelledby="action-confirm-title" aria-describedby="action-confirm-desc">
     <div class="dialog-head">
       <h2 id="action-confirm-title">确认执行远程管控动作</h2>
       <button class="ghost-button" type="button" id="action-confirm-close" aria-label="关闭动作确认对话框">关闭</button>
@@ -540,13 +742,13 @@
       <p class="confirm-warning" id="action-confirm-warning" hidden></p>
       <dl class="dialog-kv" id="action-confirm-kv"></dl>
       <div class="dialog-actions confirm-actions">
-        <button class="ghost-button" type="button" id="action-confirm-cancel">取消</button>
+        <button class="ghost-button" type="button" id="action-confirm-cancel" autofocus>取消</button>
         <button class="ghost-button danger-solid-button" type="button" id="action-confirm-ok">确认执行</button>
       </div>
     </div>
   </dialog>
 
-  <dialog class="detail-dialog" id="inject-preview-dialog" aria-labelledby="inject-preview-title" aria-describedby="inject-preview-desc">
+  <dialog class="detail-dialog" id="inject-preview-dialog" closedby="any" aria-labelledby="inject-preview-title" aria-describedby="inject-preview-desc">
     <div class="dialog-head">
       <h2 id="inject-preview-title">预览笔记本探针注入</h2>
       <button class="ghost-button" type="button" id="inject-preview-close" aria-label="关闭注入预览对话框">关闭</button>
@@ -562,13 +764,13 @@
         <pre class="log-viewer mono" id="inject-preview-code">—</pre>
       </div>
       <div class="dialog-actions confirm-actions">
-        <button class="ghost-button" type="button" id="inject-preview-cancel">取消</button>
+        <button class="ghost-button" type="button" id="inject-preview-cancel" autofocus>取消</button>
         <button class="ghost-button keepalive-button" type="button" id="inject-preview-apply">确认写入 .ipynb</button>
       </div>
     </div>
   </dialog>
 
-  <dialog class="detail-dialog confirm-dialog" id="bind-url-dialog" aria-labelledby="bind-url-title" aria-describedby="bind-url-desc">
+  <dialog class="detail-dialog confirm-dialog" id="bind-url-dialog" closedby="any" aria-labelledby="bind-url-title" aria-describedby="bind-url-desc">
     <div class="dialog-head">
       <h2 id="bind-url-title">绑定 Colab 笔记本直达链接</h2>
       <button class="ghost-button" type="button" id="bind-url-close" aria-label="关闭绑定链接对话框">关闭</button>
@@ -576,7 +778,7 @@
     <div class="dialog-body">
       <p id="bind-url-desc">粘贴浏览器打开该笔记本后的地址（仅允许 https://colab.research.google.com/... 或 https://drive.google.com/...），保存在纯本地配置中以支持后续一键直达。</p>
       <dl class="dialog-kv" id="bind-url-kv"></dl>
-      <input class="search-input bind-url-input" type="url" id="bind-url-input" placeholder="https://colab.research.google.com/drive/..." aria-label="Colab 笔记本直达链接">
+      <input class="search-input bind-url-input" type="url" id="bind-url-input" placeholder="https://colab.research.google.com/drive/..." aria-label="Colab 笔记本直达链接" autofocus>
       <div class="dialog-actions confirm-actions">
         <button class="ghost-button" type="button" id="bind-url-clear">清除绑定</button>
         <button class="ghost-button" type="button" id="bind-url-cancel">取消</button>

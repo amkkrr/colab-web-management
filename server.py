@@ -24,6 +24,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from control.collector import ControlPlaneCollector, LocalControlStorage, MultiInstanceUptimeTracker
+from control.drive_api import StdlibOAuthDriveClient, load_gdrive_oauth_config
 from control.injector import inject_notebook, remove_injection
 from control.launcher import NotebookLauncher, auto_discover_notebook_roots
 from control.protocol import (
@@ -33,6 +34,7 @@ from control.protocol import (
     resolve_local_state_dir,
     v2_to_v1_snapshot,
 )
+from control.provisioner import ColabProvisioner
 from control.registry import InstanceRegistry, _http_get_json as _agent_http_get_json, auto_discover_monitor_root
 from control.router import ActionRouter
 from h3_cli_monitor import DEFAULT_EP_FILE, fetch_snapshot, send_keepalive, send_shutdown
@@ -582,6 +584,11 @@ def create_handler(
     scan_roots: list[Path] | None = None,
     notebook_roots: list[Path] | None = None,
     enable_storage: bool = False,
+    gdrive_oauth_env: Path | None = None,
+    drive_monitor_path: str | None = None,
+    colab_cli_bin: str | None = None,
+    provisioner: Any | None = None,
+    drive_client: Any | None = None,
 ):
     """生成绑定指定 active_endpoint.json 与 v2 多实例管控平面的 HTTP 请求处理器。"""
     resolved_ep = ep_path.resolve()
@@ -598,18 +605,38 @@ def create_handler(
         local_storage = LocalControlStorage(resolved_state_dir)
         v2_ledger_path = resolved_state_dir / UPTIME_LEDGER_FILENAME
 
+    agent_src_path = (HERE / "agent" / "colab_agent.py").resolve()
+
+    resolved_drive_client = drive_client
+    if resolved_drive_client is None:
+        oauth_cfg = load_gdrive_oauth_config(gdrive_oauth_env, monitor_folder_path=drive_monitor_path)
+        if oauth_cfg is not None:
+            resolved_drive_client = StdlibOAuthDriveClient(oauth_cfg)
+
+    raw_drive_nb_folders = os.environ.get("COLAB_DRIVE_NOTEBOOK_FOLDERS") or ""
+    drive_nb_folders = [p.strip() for p in raw_drive_nb_folders.split(",") if p.strip()]
     discovered_nb_roots = auto_discover_notebook_roots(resolved_monitor_root, extra_roots=notebook_roots)
     launcher_holder: list[NotebookLauncher | None] = [
-        NotebookLauncher(roots=discovered_nb_roots, state_dir=resolved_state_dir) if resolved_state_dir is not None else None
+        NotebookLauncher(
+            roots=discovered_nb_roots,
+            state_dir=resolved_state_dir,
+            drive_client=resolved_drive_client,
+            drive_folder_paths=drive_nb_folders,
+        )
+        if resolved_state_dir is not None
+        else None
     ]
 
     def _get_launcher() -> NotebookLauncher:
         if launcher_holder[0] is None:
             sdir = resolve_local_state_dir(state_dir)
-            launcher_holder[0] = NotebookLauncher(roots=discovered_nb_roots, state_dir=sdir)
+            launcher_holder[0] = NotebookLauncher(
+                roots=discovered_nb_roots,
+                state_dir=sdir,
+                drive_client=resolved_drive_client,
+                drive_folder_paths=drive_nb_folders,
+            )
         return launcher_holder[0]
-
-    agent_src_path = (HERE / "agent" / "colab_agent.py").resolve()
 
     v2_uptime_tracker = MultiInstanceUptimeTracker(
         v2_ledger_path,
@@ -620,14 +647,60 @@ def create_handler(
         primary_ep=resolved_ep,
         scan_roots=scan_roots,
     )
-    router = ActionRouter(registry, monitor_root=resolved_monitor_root, storage=local_storage)
+    router = ActionRouter(
+        registry,
+        monitor_root=resolved_monitor_root,
+        storage=local_storage,
+        drive_client=resolved_drive_client,
+    )
+    provisioner_holder: list[Any | None] = [None]
+
+    def _current_live_usage() -> dict[str, Any] | None:
+        prov = provisioner_holder[0]
+        if prov is None:
+            return None
+        try:
+            return prov.get_usage(refresh=False)
+        except Exception:
+            return None
+
     collector = ControlPlaneCollector(
         registry=registry,
         router=router,
         uptime_tracker=v2_uptime_tracker,
         storage=local_storage,
         monitor_root=resolved_monitor_root,
+        drive_client=resolved_drive_client,
+        usage_provider=_current_live_usage,
     )
+
+    provisioner_holder[0] = (
+        provisioner
+        if provisioner is not None
+        else (
+            ColabProvisioner(
+                state_dir=resolved_state_dir,
+                agent_src_path=agent_src_path,
+                drive_client=resolved_drive_client,
+                cli_bin=colab_cli_bin,
+                on_boot_complete=lambda _res: collector.tick_once(),
+            )
+            if resolved_state_dir is not None
+            else None
+        )
+    )
+
+    def _get_provisioner() -> ColabProvisioner:
+        if provisioner_holder[0] is None:
+            sdir = resolve_local_state_dir(state_dir)
+            provisioner_holder[0] = ColabProvisioner(
+                state_dir=sdir,
+                agent_src_path=agent_src_path,
+                drive_client=resolved_drive_client,
+                cli_bin=colab_cli_bin,
+                on_boot_complete=lambda _res: collector.tick_once(),
+            )
+        return provisioner_holder[0]
 
     class DashboardHandler(BaseHTTPRequestHandler):
         server_version = "MiniMaxH3Monitor/2.0"
@@ -636,6 +709,7 @@ def create_handler(
         control_router = router
         control_collector = collector
         control_storage = local_storage
+        control_drive_client = resolved_drive_client
         v2_uptime = v2_uptime_tracker
 
         def log_message(self, format: str, *args) -> None:  # noqa: A002
@@ -714,7 +788,13 @@ def create_handler(
                 return
 
         def _send_json(self, payload: dict, status: int = HTTPStatus.OK, *, redact: bool = False) -> None:
-            data = redact_payload(payload, registry.get_all_secrets()) if redact else payload
+            if redact:
+                extra_secrets = list(registry.get_all_secrets())
+                if resolved_drive_client is not None and hasattr(resolved_drive_client, "_secrets"):
+                    extra_secrets.extend(resolved_drive_client._secrets())  # noqa: SLF001
+                data = redact_payload(payload, extra_secrets)
+            else:
+                data = payload
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
             self._write_response(status, "application/json; charset=utf-8", "no-store", body)
 
@@ -725,6 +805,25 @@ def create_handler(
             if not path.startswith("/api/v2/"):
                 return False
 
+            if path == "/api/v2/provisioner/status":
+                refresh = (query.get("refresh") or ["0"])[0] in ("1", "true", "yes")
+                prov = _get_provisioner()
+                self._send_json(prov.get_status(refresh_sessions=refresh), redact=True)
+                return True
+
+            if path.startswith("/api/v2/provisioner/jobs/"):
+                job_id = unquote(path[len("/api/v2/provisioner/jobs/") :]).strip("/")
+                if not SAFE_ID_RE.match(job_id):
+                    self._send_json({"ok": False, "error": "Invalid job_id"}, HTTPStatus.BAD_REQUEST)
+                    return True
+                prov = _get_provisioner()
+                job = prov.get_job(job_id)
+                if not job:
+                    self._send_json({"ok": False, "error": "Boot job not found"}, HTTPStatus.NOT_FOUND)
+                    return True
+                self._send_json(job, redact=True)
+                return True
+
             if path == "/api/v2/notebooks":
                 inc_bak = (query.get("include_backups") or ["0"])[0] in ("1", "true", "yes")
                 launcher = _get_launcher()
@@ -734,6 +833,8 @@ def create_handler(
                         "ok": True,
                         "roots": [str(r) for r in launcher.roots],
                         "agent_drive_path": str(resolved_monitor_root / "colab_agent.py"),
+                        "drive_scan_enabled": resolved_drive_client is not None,
+                        "drive_error": launcher.last_drive_error,
                         "notebooks": items,
                     },
                     redact=True,
@@ -743,7 +844,7 @@ def create_handler(
             if path == "/api/v2/instances":
                 limit = _parse_output_limit(query)
                 instances = registry.discover_all(output_limit=limit)
-                up_summary = v2_uptime_tracker.record_instances(instances)
+                up_summary = v2_uptime_tracker.record_instances(instances, live_usage=_current_live_usage())
                 default_inst = registry.select_default_instance(instances)
                 public_list = [self._strip_internal_fields(i) for i in instances]
                 self._send_json(
@@ -780,7 +881,7 @@ def create_handler(
 
                 limit = _parse_output_limit(query)
                 instances = registry.discover_all(output_limit=limit)
-                up_summary = v2_uptime_tracker.record_instances(instances)
+                up_summary = v2_uptime_tracker.record_instances(instances, live_usage=_current_live_usage())
                 inst = next((i for i in instances if i["instance_id"] == iid), None)
                 if not inst:
                     self._send_json({"ok": False, "error": f"Instance not found: {iid}"}, HTTPStatus.NOT_FOUND)
@@ -997,6 +1098,54 @@ def create_handler(
                 return True
 
             if path in (
+                "/api/v2/provisioner/boot",
+                "/api/v2/provisioner/stop",
+                "/api/v2/provisioner/url",
+            ):
+                expected_prov_action = {
+                    "/api/v2/provisioner/boot": "provisioner.boot",
+                    "/api/v2/provisioner/stop": "provisioner.stop",
+                    "/api/v2/provisioner/url": "provisioner.url",
+                }[path]
+                if req_action != expected_prov_action:
+                    self._send_json(
+                        {"ok": False, "error": f"Forbidden: expected action {expected_prov_action}"},
+                        status=HTTPStatus.FORBIDDEN,
+                    )
+                    return True
+                prov = _get_provisioner()
+                if path == "/api/v2/provisioner/boot":
+                    try:
+                        idle_min = int(body.get("idle_timeout_minutes", 60))
+                    except (TypeError, ValueError):
+                        self._send_json(
+                            {"ok": False, "error": "idle_timeout_minutes must be an integer"},
+                            status=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        )
+                        return True
+                    code, res = prov.start_boot(
+                        runtime_type=str(body.get("runtime_type") or "cpu"),
+                        gpu=str(body.get("gpu") or ""),
+                        tpu=str(body.get("tpu") or ""),
+                        high_mem=bool(body.get("high_mem", False)),
+                        session_name=str(body.get("session_name") or ""),
+                        project=str(body.get("project") or ""),
+                        label=str(body.get("label") or ""),
+                        idle_timeout_minutes=idle_min,
+                        attach_agent=bool(body.get("attach_agent", True)),
+                    )
+                    self._send_json(res, status=code, redact=True)
+                    return True
+                if path == "/api/v2/provisioner/stop":
+                    code, res = prov.stop_session(str(body.get("session_name") or ""))
+                    self._send_json(res, status=code, redact=True)
+                    return True
+                if path == "/api/v2/provisioner/url":
+                    code, res = prov.get_session_url(str(body.get("session_name") or ""))
+                    self._send_json(res, status=code, redact=True)
+                    return True
+
+            if path in (
                 "/api/v2/notebooks/inject",
                 "/api/v2/notebooks/remove",
                 "/api/v2/notebooks/bind-url",
@@ -1018,26 +1167,45 @@ def create_handler(
                 raw_nb_path = str(body.get("path") or "")
                 try:
                     if path == "/api/v2/notebooks/inject":
-                        target = launcher.resolve_allowed_notebook(raw_nb_path)
-                        res = inject_notebook(
-                            target,
-                            backup_dir=launcher.backup_dir,
-                            monitor_root=resolved_monitor_root,
-                            agent_src_path=agent_src_path,
-                            dry_run=bool(body.get("dry_run", True)),
-                            project=body.get("project"),
-                            label=body.get("label"),
-                            idle_timeout_minutes=int(body.get("idle_timeout_minutes", 60)),
-                        )
+                        drive_fid = launcher.parse_drive_notebook_id(raw_nb_path)
+                        if drive_fid:
+                            res = launcher.inject_drive_notebook(
+                                drive_fid,
+                                monitor_root=resolved_monitor_root,
+                                agent_src_path=agent_src_path,
+                                dry_run=bool(body.get("dry_run", True)),
+                                project=body.get("project"),
+                                label=body.get("label"),
+                                idle_timeout_minutes=int(body.get("idle_timeout_minutes", 60)),
+                            )
+                        else:
+                            target = launcher.resolve_allowed_notebook(raw_nb_path)
+                            res = inject_notebook(
+                                target,
+                                backup_dir=launcher.backup_dir,
+                                monitor_root=resolved_monitor_root,
+                                agent_src_path=agent_src_path,
+                                dry_run=bool(body.get("dry_run", True)),
+                                project=body.get("project"),
+                                label=body.get("label"),
+                                idle_timeout_minutes=int(body.get("idle_timeout_minutes", 60)),
+                            )
                         self._send_json(res, status=HTTPStatus.OK, redact=True)
                         return True
                     if path == "/api/v2/notebooks/remove":
-                        target = launcher.resolve_allowed_notebook(raw_nb_path)
-                        res = remove_injection(
-                            target,
-                            backup_dir=launcher.backup_dir,
-                            dry_run=bool(body.get("dry_run", True)),
-                        )
+                        drive_fid = launcher.parse_drive_notebook_id(raw_nb_path)
+                        if drive_fid:
+                            res = launcher.remove_drive_injection(
+                                drive_fid,
+                                dry_run=bool(body.get("dry_run", True)),
+                            )
+                        else:
+                            target = launcher.resolve_allowed_notebook(raw_nb_path)
+                            res = remove_injection(
+                                target,
+                                backup_dir=launcher.backup_dir,
+                                dry_run=bool(body.get("dry_run", True)),
+                            )
                         self._send_json(res, status=HTTPStatus.OK, redact=True)
                         return True
                     if path == "/api/v2/notebooks/bind-url":
@@ -1056,6 +1224,9 @@ def create_handler(
                     return True
                 except ValueError as exc:
                     self._send_json({"ok": False, "error": str(exc)}, status=HTTPStatus.UNPROCESSABLE_ENTITY)
+                    return True
+                except RuntimeError as exc:
+                    self._send_json({"ok": False, "error": str(exc)}, status=HTTPStatus.BAD_GATEWAY)
                     return True
 
             if path == "/api/v2/fleet/actions":
@@ -1133,7 +1304,10 @@ def create_handler(
                 if requested_iid:
                     inst = registry.get_instance(requested_iid, refresh=True, output_limit=limit)
                     if inst and not inst.get("is_legacy"):
-                        up_summary = v2_uptime_tracker.record_instances(registry.discover_all(output_limit=limit))
+                        up_summary = v2_uptime_tracker.record_instances(
+                            registry.discover_all(output_limit=limit),
+                            live_usage=_current_live_usage(),
+                        )
                         v1_view = v2_to_v1_snapshot(
                             inst,
                             uptime_summary=up_summary,
@@ -1254,6 +1428,9 @@ def run_server(
     state_dir: Path | None = None,
     scan_roots: list[Path] | None = None,
     notebook_roots: list[Path] | None = None,
+    gdrive_oauth_env: Path | None = None,
+    drive_monitor_path: str | None = None,
+    colab_cli_bin: str | None = None,
 ) -> None:
     if not _is_loopback_host(host) and not allow_remote:
         print(
@@ -1271,6 +1448,9 @@ def run_server(
             scan_roots=scan_roots,
             notebook_roots=notebook_roots,
             enable_storage=True,
+            gdrive_oauth_env=gdrive_oauth_env,
+            drive_monitor_path=drive_monitor_path,
+            colab_cli_bin=colab_cli_bin,
         )
     except ValueError as exc:
         print(f"[配置拒绝] {exc}", file=sys.stderr)
@@ -1287,6 +1467,10 @@ def run_server(
     print(f"Colab 服务器监控与远程管控台 v2.0 已启动: {url}")
     print(f"Legacy 端点配置路径: {ep_path}")
     print(f"v2 云盘交换目录: {handler.control_registry.monitor_root}")
+    if handler.control_drive_client is not None:
+        print(f"Drive 传输模式: 纯 OAuth2 Drive v3 API ({handler.control_drive_client.config.monitor_folder_path})")
+    else:
+        print("Drive 传输模式: 本地目录/未配置 OAuth2 API")
     if handler.control_storage:
         print(f"纯本地状态库: {handler.control_storage.db_path}")
     print("按 Ctrl+C 停止服务。")
@@ -1312,6 +1496,9 @@ def main() -> None:
     parser.add_argument("--state-dir", type=Path, default=None, help="纯本地状态目录（严禁位于云盘同步目录）")
     parser.add_argument("--scan-root", type=Path, action="append", default=None, help="附加 Legacy 扫描目录（可多次传入）")
     parser.add_argument("--notebook-root", type=Path, action="append", default=None, help="附加 Colab .ipynb 扫描目录（可多次传入）")
+    parser.add_argument("--gdrive-oauth-env", type=Path, default=None, help="Google Drive 纯 OAuth2 凭据 env 文件路径")
+    parser.add_argument("--drive-monitor-path", default=None, help="Google Drive 远端 _colab_monitor 相对路径")
+    parser.add_argument("--colab-cli-bin", default=None, help="google-colab-cli 可执行文件路径")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址（默认 127.0.0.1）")
     parser.add_argument("--port", type=int, default=8765, help="监听端口（默认 8765）")
     parser.add_argument("--no-open", action="store_true", help="启动时不自动打开浏览器")
@@ -1331,6 +1518,9 @@ def main() -> None:
         state_dir=args.state_dir,
         scan_roots=args.scan_root,
         notebook_roots=args.notebook_root,
+        gdrive_oauth_env=args.gdrive_oauth_env,
+        drive_monitor_path=args.drive_monitor_path,
+        colab_cli_bin=args.colab_cli_bin,
     )
 
 
