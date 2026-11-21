@@ -1203,7 +1203,8 @@
     const retryBtn = document.getElementById("banner-retry");
     const demoBtn = document.getElementById("banner-demo");
 
-    tunnel.textContent = snap.base_url || "未配置隧道地址";
+    const curV2 = appState.currentV2Instance;
+    tunnel.textContent = snap.base_url || (isDriveOnlyInstance(curV2) ? "无 HTTPS 隧道（Drive 带外心跳）" : "未配置隧道地址");
     updated.textContent = "采集于 " + formatLocalTime(snap.fetched_at);
 
     const isDemo = Boolean(snap.is_demo);
@@ -2274,10 +2275,34 @@
     return "offline";
   }
 
+  function isTunnelDegraded(inst) {
+    return Boolean(
+      inst &&
+      !inst.is_legacy &&
+      inst.tunnel?.enabled &&
+      !inst.tunnel?.healthy &&
+      (inst.liveness_state === "ONLINE_DRIVE_ONLY" || inst.liveness_state === "DEGRADED_STALE")
+    );
+  }
+
+  function isDriveOnlyInstance(inst) {
+    return Boolean(
+      inst &&
+      !inst.is_legacy &&
+      (inst.liveness_state === "ONLINE_DRIVE_ONLY" ||
+        inst.active_channel === "drive" ||
+        (!inst.tunnel?.enabled && isV2Online(inst)))
+    );
+  }
+
   function renderInstanceBar() {
     const tabsHost = document.getElementById("instance-tabs");
     const badge = document.getElementById("active-channel-badge");
     const fleetBtn = document.getElementById("fleet-drain-all");
+    const callout = document.getElementById("instance-mode-callout");
+    const calloutPill = document.getElementById("instance-mode-pill");
+    const calloutText = document.getElementById("instance-mode-text");
+    const rebuildBannerBtn = document.getElementById("banner-rebuild-tunnel");
     if (!tabsHost) return;
 
     const list = appState.v2Instances || [];
@@ -2285,8 +2310,14 @@
 
     if (!list.length) {
       tabsHost.replaceChildren(el("span", "未发现活跃实例（兼容单端点模式）", "chart-caption"));
-      if (badge) badge.textContent = "通道：Legacy / 离线";
+      if (badge) {
+        badge.textContent = "通道：Legacy / 离线";
+        delete badge.dataset.channel;
+        delete badge.dataset.tooltip;
+      }
       if (fleetBtn) fleetBtn.hidden = true;
+      if (callout) callout.hidden = true;
+      if (rebuildBannerBtn) rebuildBannerBtn.hidden = true;
       return;
     }
 
@@ -2301,17 +2332,37 @@
       dot.dataset.state = livenessDotState(inst.liveness_state);
       dot.setAttribute("aria-hidden", "true");
 
-      const gpu = inst.hardware?.gpu?.available ? (inst.hardware.gpu.name || "GPU") : "CPU";
+      const hwLabel = inst.hardware?.gpu?.available
+        ? (inst.hardware.gpu.name || "GPU")
+        : (Number(inst.hardware?.ram?.total_gib || 0) >= 24 ? "CPU High-RAM" : "CPU");
       const prog = inst.workload?.progress;
       const progText = prog && prog.total > 0 ? ` · ${Math.round((prog.done / prog.total) * 100)}%` : "";
-      const meta = el("span", `${gpu}${progText}`, "instance-tab-meta");
+      const meta = el("span", `${hwLabel}${progText}`, "instance-tab-meta");
+
+      let chPill = null;
+      if (!inst.is_legacy && !inst.tunnel?.enabled) {
+        chPill = el("span", "无隧道", "instance-tab-channel");
+        chPill.dataset.channel = "drive";
+        chPill.dataset.tooltip = "无 HTTPS 隧道：经 Google Drive 心跳同步监控与带外指令";
+      } else if (isTunnelDegraded(inst)) {
+        chPill = el("span", "隧道降级", "instance-tab-channel");
+        chPill.dataset.channel = "degraded";
+        chPill.dataset.tooltip = "HTTPS 隧道不可达，已降级为 Google Drive 带外信箱通道";
+      } else if (inst.active_channel === "tunnel") {
+        chPill = el("span", "HTTPS", "instance-tab-channel");
+        chPill.dataset.channel = "tunnel";
+      }
 
       btn.append(dot, document.createTextNode(inst.label || inst.instance_id), meta);
+      if (chPill) btn.append(chPill);
       btn.addEventListener("click", () => {
         if (appState.selectedInstanceId === inst.instance_id) return;
         appState.selectedInstanceId = inst.instance_id;
         if (appState.sourceMode === "demo" && appState.demoV2State) {
           appState.demoV2State.selectedId = inst.instance_id;
+        } else {
+          appState.lastLogPayload = null;
+          appState.lastProcesses = [];
         }
         loadSnapshot();
       });
@@ -2323,7 +2374,19 @@
       const chMap = { tunnel: "通道 A · HTTPS 实时隧道", drive: "通道 B · Google Drive 信箱", none: "无可用控制通道" };
       const stText = cur ? livenessLabel(cur.liveness_state) : "未知";
       const chText = cur ? (chMap[cur.active_channel] || cur.active_channel || "—") : "—";
-      badge.textContent = `${stText} · ${chText}`;
+      if (cur && !cur.is_legacy && !cur.tunnel?.enabled && isV2Online(cur)) {
+        badge.textContent = "在线（无 HTTPS 隧道 · Drive 带外）";
+        badge.dataset.channel = "drive";
+        badge.dataset.tooltip = "未开启 HTTPS 公网隧道，监控与控制指令均走 Google Drive 带外信箱（15–30s 刷新）";
+      } else if (isTunnelDegraded(cur)) {
+        badge.textContent = `${stText} · 通道 B · Google Drive 信箱`;
+        badge.dataset.channel = "degraded";
+        badge.dataset.tooltip = "HTTPS 实时隧道不可达，已自动降级为 Google Drive 带外通道";
+      } else {
+        badge.textContent = `${stText} · ${chText}`;
+        badge.dataset.channel = cur?.active_channel || "none";
+        delete badge.dataset.tooltip;
+      }
     }
 
     const onlineCount = list.filter((i) => isV2Online(i)).length;
@@ -2332,27 +2395,30 @@
       fleetBtn.textContent = `全部排空关机 (${onlineCount})`;
     }
 
-    // Dual-channel banner quick rebuild button
-    const rebuildBannerBtn = document.getElementById("banner-rebuild-tunnel");
-    if (rebuildBannerBtn) {
-      const showRebuild = Boolean(
-        cur &&
-        !cur.is_legacy &&
-        (cur.liveness_state === "ONLINE_DRIVE_ONLY" || cur.liveness_state === "DEGRADED_STALE") &&
-        hasCap(cur, "network.rebuild_tunnel")
-      );
-      rebuildBannerBtn.hidden = !showRebuild;
-      if (showRebuild) {
-        const banner = document.getElementById("status-banner");
-        const bTitle = document.getElementById("banner-title");
-        const bMsg = document.getElementById("banner-message");
-        if (banner && bTitle && bMsg) {
-          banner.hidden = false;
-          banner.dataset.severity = "warning";
-          bTitle.textContent = "已切换至云盘带外管控通道";
-          bMsg.textContent = "实时隧道不可达或未开启，当前通过 Google Drive 带外信箱监控与下发指令（约 15–60s 生效）。";
-        }
+    const degraded = isTunnelDegraded(cur);
+    const showCallout = Boolean(
+      cur &&
+      !cur.is_legacy &&
+      (isV2Online(cur) || cur.liveness_state === "DEGRADED_STALE") &&
+      (isDriveOnlyInstance(cur) || degraded)
+    );
+    if (showCallout && callout && calloutPill && calloutText) {
+      callout.hidden = false;
+      if (degraded) {
+        callout.dataset.mode = "degraded";
+        calloutPill.textContent = "隧道断流 · 已降级 Drive 信箱";
+        calloutText.textContent =
+          "原 HTTPS 实时隧道当前不可达，已自动切换至 Google Drive 带外心跳与指令信箱（约 15–60s 生效）；实时日志流与在线进程列表暂不可用。";
+      } else {
+        callout.dataset.mode = "drive-only";
+        calloutPill.textContent = "无 HTTPS 隧道 · Drive 带外模式";
+        calloutText.textContent =
+          "当前实例未开启 HTTPS 公网隧道（offline_batch），硬件指标与阶段进度每 15–30s 通过 Google Drive 心跳同步，保活/关机指令经云盘信箱下发（约 15–30s 生效）；不支持实时日志流与在线进程列表，可用「日志快照转存」导出日志。";
       }
+      if (rebuildBannerBtn) rebuildBannerBtn.hidden = !hasCap(cur, "network.rebuild_tunnel");
+    } else {
+      if (callout) callout.hidden = true;
+      if (rebuildBannerBtn) rebuildBannerBtn.hidden = true;
     }
   }
 
@@ -2425,10 +2491,11 @@
 
       const svcs = inst.services || {};
       const drive = inst.hardware?.drive || {};
+      const noTunnel = !inst.is_legacy && !inst.tunnel?.enabled;
       const kvData = [
         ["ComfyUI", svcs.comfyui ? `${svcs.comfyui.status}${svcs.comfyui.pid ? " (PID " + svcs.comfyui.pid + ")" : ""}` : "未注册"],
-        ["Cloudflared", svcs.cloudflared ? svcs.cloudflared.status : (inst.tunnel?.healthy ? "running" : "stopped")],
-        ["Gateway", svcs.gateway ? svcs.gateway.status : (inst.tunnel?.enabled ? "online" : "offline_batch")],
+        ["Cloudflared", svcs.cloudflared ? svcs.cloudflared.status : (noTunnel ? "未启用（无隧道模式）" : (inst.tunnel?.healthy ? "running" : "stopped"))],
+        ["Gateway", svcs.gateway ? svcs.gateway.status : (noTunnel ? "无公网网关 (offline_batch)" : (inst.tunnel?.enabled ? "online" : "offline_batch"))],
         ["Google Drive", drive.mode ? `${drive.mode} (${drive.healthy ? "正常" : "异常"})` : "—"]
       ];
       svcKv.replaceChildren(
@@ -2522,7 +2589,9 @@
     if (!box) return;
     const payload = appState.lastLogPayload;
     if (!payload) {
-      box.textContent = "点击「拉取日志」或切换至「演示样本」查看白名单日志（自动脱敏密钥）。";
+      box.textContent = isDriveOnlyInstance(appState.currentV2Instance)
+        ? "当前实例为无 HTTPS 隧道（Drive 带外）模式，不支持实时日志流；可点击「日志快照转存」写入云盘后，再点击「拉取日志」读取最新云盘快照。"
+        : "点击「拉取日志」或切换至「演示样本」查看白名单日志（自动脱敏密钥）。";
       return;
     }
     const q = (appState.logFilter || "").trim().toLowerCase();
@@ -2541,7 +2610,12 @@
     const procs = appState.lastProcesses || [];
     if (!procs.length) {
       const tr = el("tr");
-      const td = el("td", "暂无进程数据，请点击「刷新进程列表」（需 ONLINE_LIVE 隧道模式）。");
+      const td = el(
+        "td",
+        isDriveOnlyInstance(appState.currentV2Instance)
+          ? "当前实例为无 HTTPS 隧道（Drive 带外）模式，暂不支持在线进程列表（仅 HTTPS 实时隧道模式支持）。"
+          : "暂无进程数据，请点击「刷新进程列表」（需 ONLINE_LIVE 隧道模式）。"
+      );
       td.colSpan = 5;
       tr.append(td);
       tbody.replaceChildren(tr);
@@ -3554,6 +3628,8 @@
     syncModeFilterButtons(snap.recent_outputs || []);
     renderOutputsTable();
     syncActionButtons(snap);
+    if (!appState.lastLogPayload) renderInspectorLogs();
+    if (!(appState.lastProcesses || []).length) renderInspectorProcesses();
     if (appState.provisionerStatus && !document.getElementById("provisioner-sessions-body")?.contains(document.activeElement)) {
       renderProvisioner();
     }
