@@ -1,0 +1,13 @@
+repos:
+  - repo: local
+    hooks:
+      - id: privacy-and-user-data-guard
+        name: Privacy & User-Data Leak Guard
+        entry: python3 scripts/privacy_guard.py --files
+        language: system
+        pass_filenames: true
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+        args: ["--config=.gitleaks.toml"]

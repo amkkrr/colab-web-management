@@ -1,0 +1,53 @@
+# Python bytecode & build artifacts (IMPORTANT: .pyc embeds absolute local paths!)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# macOS / Windows / Editor metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Runtime state, secrets & personal user data (NEVER commit!)
+active_endpoint.json
+uptime_ledger.json
+monitor_state.sqlite3
+monitor_state.sqlite3-wal
+monitor_state.sqlite3-shm
+notebooks_launcher.json
+shutdown_markers.json
+notebook_backups/
+_colab_monitor/
+outputs/
+ref_inputs/
+*.ipynb
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wav
+*.mp3
+*.log
+
+# Credentials, env files & private local denylists
+.env
+.env.*
+*secret*.json
+*token*.json
+credentials*.json
+*.pem
+*.key
+privacy_denylist.txt

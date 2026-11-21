@@ -1,0 +1,317 @@
+/* Optional Ash Marble theme overlay (v1.1.0, aligned with sage_design_paradigm AUDIT-0003).
+   Apply data-palette="ash-marble", data-ash-tone="pale"|"gray", and
+   data-resolved-theme="light"|"dark" to <html>. If JS does not run, CSS falls back
+   to prefers-color-scheme. */
+
+@layer base, theme, components, utilities;
+
+@layer theme {
+  :root[data-palette="ash-marble"] {
+    font-family: "Space Grotesk", "Noto Sans SC", "Noto Sans CJK SC",
+      "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size-adjust: from-font;
+  }
+
+  @supports not (font-size-adjust: from-font) {
+    :root[data-palette="ash-marble"] body {
+      line-height: 1.5;
+    }
+  }
+
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] {
+    --page: #F1F2F3;
+    --surface-1: #F9FAFB;
+    --surface-2: #E4E9EC;
+    --ink-1: #313A41;
+    --ink-2: #55636C;
+    --ink-3: #646F76;
+    --grid: #E0E6E9;
+    --axis: #6E7C84;
+    --hairline: #D9DFE2;
+    --wash: rgba(49, 58, 65, .055);
+    --focus: #2A78D6;
+    --accent-hero: #345F78;
+    --accent-secondary: #376C67;
+    --s1: #3B6B87;
+    --s2: #4B7975;
+    --s3: #5C6380;
+    --s4: #7F6B58;
+    --s5: #7B5D6B;
+    --other: #78868F;
+    --data-s1: var(--s1);
+    --data-s2: var(--s2);
+    --data-s3: var(--s3);
+    --data-s4: var(--s4);
+    --data-s5: var(--s5);
+    --data-other: var(--other);
+    --data-prior-period: #D5DFE4;
+    --data-prior-border: #687780;
+    --data-current-period: #3B6B87;
+    --seq-0: #E4E9EC;
+    --seq-1: #D2E0E8;
+    --seq-2: #B3CBD9;
+    --seq-3: #8FB0C4;
+    --seq-4: #6892AC;
+    --seq-5: #3B6B87;
+    --seq-6: #2D536A;
+    --seq-7: #1F3B4D;
+    --heat-0: #E4E9EC;
+    --heat-1: #C8D9D7;
+    --heat-2: #A5C1BE;
+    --heat-3: #80A7A3;
+    --heat-4: #5D8B86;
+    --heat-5: #3E6E69;
+    --heat-6: #2E5450;
+    --heat-7: #1F3A38;
+  }
+
+  :root[data-palette="ash-marble"][data-resolved-theme="light"][data-ash-tone="gray"] {
+    --page: #E1E4E5;
+    --surface-1: #F0F1F1;
+    --surface-2: #DCE1E2;
+    --ink-1: #30383E;
+    --ink-2: #505F68;
+    --ink-3: #5A656D;
+    --grid: #D5DBDD;
+    --axis: #66747C;
+    --hairline: #CBD1D3;
+    --wash: rgba(48, 56, 62, .06);
+    --s1: #35627C;
+    --s2: #436E6A;
+    --s3: #535A75;
+    --s4: #73604E;
+    --s5: #705361;
+    --other: #6B7982;
+    --data-prior-period: #C7D2D7;
+    --data-prior-border: #5D6B74;
+    --data-current-period: #35627C;
+    --seq-0: #DCE1E2;
+    --seq-1: #C6D6DF;
+    --seq-2: #A6C0CF;
+    --seq-3: #82A4B8;
+    --seq-4: #5D869F;
+    --seq-5: #35627C;
+    --seq-6: #284B60;
+    --seq-7: #1B3545;
+    --heat-0: #DCE1E2;
+    --heat-1: #BDD0CE;
+    --heat-2: #9AB8B4;
+    --heat-3: #769E99;
+    --heat-4: #54827D;
+    --heat-5: #376560;
+    --heat-6: #284C48;
+    --heat-7: #1A3331;
+  }
+
+  /* No-JS fallback: honor system light mode when data-resolved-theme is absent. */
+  @media (prefers-color-scheme: light) {
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) {
+      --page: #F1F2F3;
+      --surface-1: #F9FAFB;
+      --surface-2: #E4E9EC;
+      --ink-1: #313A41;
+      --ink-2: #55636C;
+      --ink-3: #646F76;
+      --grid: #E0E6E9;
+      --axis: #6E7C84;
+      --hairline: #D9DFE2;
+      --wash: rgba(49, 58, 65, .055);
+      --focus: #2A78D6;
+      --accent-hero: #345F78;
+      --accent-secondary: #376C67;
+      --s1: #3B6B87;
+      --s2: #4B7975;
+      --s3: #5C6380;
+      --s4: #7F6B58;
+      --s5: #7B5D6B;
+      --other: #78868F;
+      --data-s1: var(--s1);
+      --data-s2: var(--s2);
+      --data-s3: var(--s3);
+      --data-s4: var(--s4);
+      --data-s5: var(--s5);
+      --data-other: var(--other);
+      --data-prior-period: #D5DFE4;
+      --data-prior-border: #687780;
+      --data-current-period: #3B6B87;
+      --seq-0: #E4E9EC;
+      --seq-1: #D2E0E8;
+      --seq-2: #B3CBD9;
+      --seq-3: #8FB0C4;
+      --seq-4: #6892AC;
+      --seq-5: #3B6B87;
+      --seq-6: #2D536A;
+      --seq-7: #1F3B4D;
+      --heat-0: #E4E9EC;
+      --heat-1: #C8D9D7;
+      --heat-2: #A5C1BE;
+      --heat-3: #80A7A3;
+      --heat-4: #5D8B86;
+      --heat-5: #3E6E69;
+      --heat-6: #2E5450;
+      --heat-7: #1F3A38;
+    }
+
+    :root[data-palette="ash-marble"]:not([data-resolved-theme])[data-ash-tone="gray"] {
+      --page: #E1E4E5;
+      --surface-1: #F0F1F1;
+      --surface-2: #DCE1E2;
+      --ink-1: #30383E;
+      --ink-2: #505F68;
+      --ink-3: #5A656D;
+      --grid: #D5DBDD;
+      --axis: #66747C;
+      --hairline: #CBD1D3;
+      --wash: rgba(48, 56, 62, .06);
+      --s1: #35627C;
+      --s2: #436E6A;
+      --s3: #535A75;
+      --s4: #73604E;
+      --s5: #705361;
+      --other: #6B7982;
+      --data-prior-period: #C7D2D7;
+      --data-prior-border: #5D6B74;
+      --data-current-period: #35627C;
+      --seq-0: #DCE1E2;
+      --seq-1: #C6D6DF;
+      --seq-2: #A6C0CF;
+      --seq-3: #82A4B8;
+      --seq-4: #5D869F;
+      --seq-5: #35627C;
+      --seq-6: #284B60;
+      --seq-7: #1B3545;
+      --heat-0: #DCE1E2;
+      --heat-1: #BDD0CE;
+      --heat-2: #9AB8B4;
+      --heat-3: #769E99;
+      --heat-4: #54827D;
+      --heat-5: #376560;
+      --heat-6: #284C48;
+      --heat-7: #1A3331;
+    }
+  }
+
+  /* Preserve the existing Sage dark palette when dark resolves; marble is light-only. */
+  :root[data-palette="ash-marble"][data-resolved-theme="dark"] {
+    --accent-hero: var(--ink-1);
+    --accent-secondary: var(--ink-2);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-palette="ash-marble"]:not([data-resolved-theme="light"]) {
+      --accent-hero: var(--ink-1);
+      --accent-secondary: var(--ink-2);
+    }
+  }
+}
+
+@layer components {
+  /* Opt in on large cards ONLY: never apply this class to the page or controls. */
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] .ash-marble-card {
+    position: relative;
+    isolation: isolate;
+    background: var(--surface-1);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] .ash-marble-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    background: url("../assets/ash-marble.svg") center / cover no-repeat;
+    opacity: .12;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) .ash-marble-card {
+      position: relative;
+      isolation: isolate;
+      background: var(--surface-1);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      box-shadow: none;
+    }
+
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) .ash-marble-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      border-radius: inherit;
+      background: url("../assets/ash-marble.svg") center / cover no-repeat;
+      opacity: .12;
+    }
+
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) .kpi--primary :is(.kpi__value, .metric-value) {
+      color: var(--accent-hero);
+      font-variant-numeric: tabular-nums;
+    }
+
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) .ash-marble-card :is(button:not(.bar-btn):not(.sort-button), input, select, textarea, dialog, summary, table, thead, tbody th, tfoot th, .control-set, [role="tooltip"], [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]) {
+      background-color: var(--surface-1);
+      background-image: none;
+    }
+
+    :root[data-palette="ash-marble"]:not([data-resolved-theme]) .ash-marble-card .control-set > button {
+      background-color: transparent;
+    }
+  }
+
+  /* A Flat material switch disables the pseudo-element without changing palette. */
+  :root[data-palette="ash-marble"][data-ash-material="flat"] .ash-marble-card::before {
+    display: none;
+  }
+
+  /* When only a single KPI is highlighted, color signals hierarchy, not status. */
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] .kpi--primary :is(.kpi__value, .metric-value) {
+    color: var(--accent-hero);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Controls remain flat and neutral; don't attach .ash-marble-card to them. */
+  :root[data-palette="ash-marble"] :is(button, input, select, textarea) {
+    background-image: none;
+  }
+
+  /* Nested controls and exact-value tables use opaque, flat surfaces; keep chart bars,
+     sticky sort buttons, and segmented-control buttons transparent over their opaque hosts. */
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] .ash-marble-card :is(button:not(.bar-btn):not(.sort-button), input, select, textarea, dialog, summary, table, thead, tbody th, tfoot th, .control-set, [role="tooltip"], [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]) {
+    background-color: var(--surface-1);
+    background-image: none;
+  }
+
+  :root[data-palette="ash-marble"][data-resolved-theme="light"] .ash-marble-card .control-set > button {
+    background-color: transparent;
+  }
+
+  @supports selector(:scope) {
+    @scope (:root[data-palette="ash-marble"][data-resolved-theme="light"] .ash-marble-card) {
+      :is(button:not(.bar-btn):not(.sort-button), input, select, textarea, dialog, summary, table, thead, tbody th, tfoot th, .control-set, [role="tooltip"], [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"]) {
+        background-color: var(--surface-1);
+        background-image: none;
+      }
+      .control-set > button {
+        background-color: transparent;
+      }
+    }
+  }
+
+  /* Guard common opt-in mistakes without suppressing unrelated control icons. */
+  :root[data-palette="ash-marble"] .ash-marble-card:is(html, body, button, input, select, textarea, dialog, td, th, .control-set, [role="button"], [role="tooltip"], [role="dialog"], [role="listbox"], [role="menu"], [role="combobox"], [role="tablist"])::before {
+    content: none;
+  }
+}
+
+@layer utilities {
+  @media (forced-colors: active) {
+    .ash-marble-card::before {
+      display: none !important;
+    }
+  }
+}

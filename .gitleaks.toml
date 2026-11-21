@@ -1,0 +1,31 @@
+title = "Colab Server Monitor & Control Plane — Gitleaks Security Policy"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "colab-quick-tunnel-url"
+description = "Real Cloudflare TryCloudflare quick tunnel URL"
+regex = '''https://(?!demo-|example-)[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+\.trycloudflare\.com'''
+tags = ["tunnel", "privacy"]
+
+[[rules]]
+id = "local-macos-or-cloud-path"
+description = "Absolute local macOS/Windows user path or Google Drive account folder"
+regex = '''(/Users/[A-Za-z0-9._-]+/|C:\\Users\\[A-Za-z0-9._-]+\\|GoogleDrive-[A-Za-z0-9._%+-]+@)'''
+tags = ["pii", "path"]
+
+[[rules]]
+id = "personal-email-address"
+description = "Personal email address in repository files"
+regex = '''[A-Za-z0-9._%+-]+@(gmail|icloud|qq|163|126|outlook|hotmail|protonmail)\.[A-Za-z]{2,}'''
+tags = ["pii", "email"]
+
+[allowlist]
+description = "Allow synthetic test fixtures and standard font license attributions"
+paths = [
+  '''^tests/''',
+  '''^web/assets/fonts/OFL\.txt$''',
+  '''^scripts/privacy_guard\.py$''',
+  '''^\.gitleaks\.toml$''',
+]
