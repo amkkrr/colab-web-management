@@ -1363,14 +1363,14 @@ def create_handler(
                 return
 
             actions = {
-                "/api/keepalive": ("keepalive", send_keepalive),
-                "/api/shutdown": ("shutdown", send_shutdown),
+                "/api/keepalive": ("keepalive", "lifecycle.keepalive", send_keepalive),
+                "/api/shutdown": ("shutdown", "lifecycle.shutdown_now", send_shutdown),
             }
             if path not in actions:
                 self._send_error_safe(HTTPStatus.NOT_FOUND, "Not Found")
                 return
 
-            expected_action, action_fn = actions[path]
+            expected_action, v2_action, action_fn = actions[path]
             if self.headers.get("X-H3-Action") != expected_action:
                 self._send_json(
                     {"ok": False, "error": f"Forbidden: missing X-H3-Action: {expected_action} header"},
@@ -1390,7 +1390,65 @@ def create_handler(
                 self.rfile.read(content_length)
 
             limit = _parse_output_limit(query)
-            res = action_fn(resolved_ep, output_limit=limit, include_details=True)
+            requested_iid = (query.get("instance_id") or [""])[0].strip()
+            target_inst: dict | None = None
+            if requested_iid:
+                if not SAFE_ID_RE.match(requested_iid):
+                    self._send_json({"ok": False, "error": "Invalid instance_id"}, HTTPStatus.BAD_REQUEST)
+                    return
+                target_inst = registry.get_instance(requested_iid, refresh=True, output_limit=limit)
+                if not target_inst:
+                    self._send_json(
+                        {"ok": False, "error": f"Instance not found: {requested_iid}"},
+                        HTTPStatus.NOT_FOUND,
+                    )
+                    return
+            else:
+                inst_dir = resolved_monitor_root / "instances"
+                has_v2_files = inst_dir.is_dir() and any(
+                    not p.name.startswith("._tmp_") for p in inst_dir.glob("*.json")
+                )
+                if has_v2_files:
+                    instances = registry.discover_all(output_limit=limit)
+                    target_inst = registry.select_default_instance(instances)
+
+            if target_inst is not None and not target_inst.get("is_legacy"):
+                code, res = router.dispatch_action(
+                    target_inst["instance_id"],
+                    v2_action,
+                    params={},
+                    issued_by="local_web_ui",
+                    output_limit=limit,
+                )
+                out = dict(res)
+                out.setdefault("via", out.get("channel") or "v2")
+                if not out.get("ok"):
+                    out.setdefault("error", out.get("message") or "操作失败")
+                refreshed = registry.discover_all(output_limit=limit)
+                up_summary = v2_uptime_tracker.record_instances(refreshed, live_usage=_current_live_usage())
+                updated_inst = next(
+                    (i for i in refreshed if i["instance_id"] == target_inst["instance_id"]),
+                    target_inst,
+                )
+                public_inst = self._strip_internal_fields(updated_inst)
+                if v2_action == "lifecycle.keepalive" and out.get("ok"):
+                    lc = public_inst.get("lifecycle") or {}
+                    data_map = out.get("data") if isinstance(out.get("data"), dict) else {}
+                    out.setdefault("idle_seconds", data_map.get("idle_seconds", lc.get("idle_seconds")))
+                    out.setdefault("idle_timeout_minutes", lc.get("idle_timeout_minutes"))
+                out["snapshot"] = v2_to_v1_snapshot(
+                    public_inst,
+                    uptime_summary=up_summary,
+                    recent_outputs=public_inst.get("recent_outputs") or [],
+                    total_output_files=int(public_inst.get("total_output_files") or 0),
+                )
+                self._send_json(out, status=code, redact=True)
+                return
+
+            target_ep = (
+                registry.get_legacy_ep_path(target_inst["instance_id"]) if target_inst is not None else None
+            ) or resolved_ep
+            res = action_fn(target_ep, output_limit=limit, include_details=True)
             if isinstance(res.get("snapshot"), dict):
                 res["snapshot"]["uptime_summary"] = tracker.record_and_summarize(
                     res["snapshot"], force_flush=True

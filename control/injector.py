@@ -166,9 +166,19 @@ def generate_injected_cell(
     timeout_min = max(0, min(360, int(idle_timeout_minutes)))
     nb_name = _sanitize_label(nb_path.name)
 
+    runtime_idle_lines = [
+        "    _cm_idle_raw = globals().get('IDLE_TIMEOUT_MINUTES')\n",
+        f"    _cm_idle_min = max(0, min(360, _cm_idle_raw)) if isinstance(_cm_idle_raw, int) and not isinstance(_cm_idle_raw, bool) else {timeout_min}\n",
+        "    if globals().get('COLAB_AGENT') is not None:\n",
+        "        try:\n",
+        "            globals()['COLAB_AGENT'].stop()\n",
+        "        except Exception:\n",
+        "            pass\n",
+    ]
+
     if mode == "oauth_silent":
         lines = [
-            f"# @title 📡 Colab Monitor v2.0 探针（自动注入 · 静默 OAuth 模式，请勿手动修改标记）\n",
+            "# @title 📡 Colab Monitor v2.0 探针（自动注入 · 静默 OAuth 模式，请勿手动修改标记）\n",
             "# 本单元由本地管控台自动注入；支持一键升级或卸载，不改动原业务单元。\n",
             "import importlib.util, io, pathlib, sys\n",
             "\n",
@@ -194,8 +204,21 @@ def generate_injected_cell(
             "    return mod\n",
             "\n",
             "try:\n",
-            f"    _cm_mod = _load_colab_agent_via_oauth(GDRIVE._service(), {monitor_drive_rel!r})\n",
-            f"    _cm_backend = _cm_mod.OAuthDriveBackend(service_factory=GDRIVE._service, monitor_folder_path={monitor_drive_rel!r})\n",
+            *runtime_idle_lines,
+            "    if getattr(GDRIVE, 'mode', 'api') == 'fuse':\n",
+            f"        _cm_root = pathlib.Path('/content/drive/MyDrive') / {monitor_drive_rel!r}\n",
+            "        _cm_file = _cm_root / 'colab_agent.py'\n",
+            "        if not _cm_file.is_file():\n",
+            "            raise FileNotFoundError(f'未找到 {_cm_file}，请确认 Google Drive 已同步')\n",
+            "        _cm_spec = importlib.util.spec_from_file_location('colab_agent', _cm_file)\n",
+            "        _cm_mod = importlib.util.module_from_spec(_cm_spec)\n",
+            "        _cm_spec.loader.exec_module(_cm_mod)\n",
+            "        _cm_backend = _cm_mod.FuseDriveBackend(_cm_root)\n",
+            "        _cm_mode_tag = 'FUSE fallback'\n",
+            "    else:\n",
+            f"        _cm_mod = _load_colab_agent_via_oauth(GDRIVE._service(), {monitor_drive_rel!r})\n",
+            f"        _cm_backend = _cm_mod.OAuthDriveBackend(service_factory=GDRIVE._service, monitor_folder_path={monitor_drive_rel!r})\n",
+            "        _cm_mode_tag = 'OAuth'\n",
             "    COLAB_AGENT = _cm_mod.ColabAgent(\n",
             f"        project={proj!r},\n",
             f"        label={lbl!r},\n",
@@ -203,10 +226,11 @@ def generate_injected_cell(
             "        drive_backend=_cm_backend,\n",
             "        run_mode='online_gateway' if 'API_KEY' in globals() else 'offline_batch',\n",
             "        api_key=globals().get('API_KEY') or None,\n",
-            f"        idle_timeout_minutes={timeout_min},\n",
+            "        idle_timeout_minutes=_cm_idle_min,\n",
             "    )\n",
             "    COLAB_AGENT.start_background_workers()\n",
-            "    print(f'[Colab Monitor v2] 已上线 (OAuth): {COLAB_AGENT.instance_id} | 可选在循环中调用 COLAB_AGENT.checkpoint()')\n",
+            "    COLAB_AGENT.publish_heartbeat()\n",
+            "    print(f'[Colab Monitor v2] 已上线 ({_cm_mode_tag}): {COLAB_AGENT.instance_id} | 空闲上限 {_cm_idle_min}m')\n",
             "except Exception as _cm_err:\n",
             "    print(f'[Colab Monitor v2] 探针初始化跳过（不影响原业务运行）: {_cm_err}')\n",
         ]
@@ -223,12 +247,13 @@ def generate_injected_cell(
             else []
         )
         lines = [
-            f"# @title 📡 Colab Monitor v2.0 探针（自动注入 · FUSE 模式，请勿手动修改标记）\n",
+            "# @title 📡 Colab Monitor v2.0 探针（自动注入 · FUSE 模式，请勿手动修改标记）\n",
             "# 本单元由本地管控台自动注入；支持一键升级或卸载，不改动原业务单元。\n",
             "import importlib.util, pathlib\n",
             "\n",
             *mount_snippet,
             "try:\n",
+            *runtime_idle_lines,
             f"    _cm_root = pathlib.Path('/content/drive/MyDrive') / {monitor_drive_rel!r}\n",
             "    _cm_file = _cm_root / 'colab_agent.py'\n",
             "    if not _cm_file.is_file():\n",
@@ -242,10 +267,11 @@ def generate_injected_cell(
             f"        notebook_name={nb_name!r},\n",
             "        drive_backend=_cm_mod.FuseDriveBackend(_cm_root),\n",
             "        run_mode='offline_batch',\n",
-            f"        idle_timeout_minutes={timeout_min},\n",
+            "        idle_timeout_minutes=_cm_idle_min,\n",
             "    )\n",
             "    COLAB_AGENT.start_background_workers()\n",
-            "    print(f'[Colab Monitor v2] 已上线 (FUSE): {COLAB_AGENT.instance_id} | 可选在循环中调用 COLAB_AGENT.checkpoint()')\n",
+            "    COLAB_AGENT.publish_heartbeat()\n",
+            "    print(f'[Colab Monitor v2] 已上线 (FUSE): {COLAB_AGENT.instance_id} | 空闲上限 {_cm_idle_min}m')\n",
             "except Exception as _cm_err:\n",
             "    print(f'[Colab Monitor v2] 探针初始化跳过（不影响原业务运行）: {_cm_err}')\n",
         ]

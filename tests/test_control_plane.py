@@ -678,6 +678,372 @@ class ControlPlaneAcceptanceTests(unittest.TestCase):
             ep_errs = check_file("active_endpoint.json", tmp_dir / "missing.json", [])
             self.assertTrue(any("FORBIDDEN_FILE" in e for e in ep_errs))
 
+    def test_v1_keepalive_and_shutdown_compat_routes_v2_instances(self) -> None:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+        # 1. v2 ONLINE_DRIVE_ONLY (no HTTPS tunnel, no active_endpoint.json)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            monitor_root = tmp_dir / "_colab_monitor"
+            state_dir = tmp_dir / "local_state"
+            ep_file = tmp_dir / "active_endpoint.json"  # intentionally absent
+
+            unassign_called = {"count": 0}
+            agent = ColabAgent(
+                project="drive_only_proj",
+                label="Drive Only L4",
+                drive_backend=FuseDriveBackend(monitor_root),
+                run_mode="offline_batch",
+                api_key="drive-only-secret-token-12345",
+                hardware_collector=lambda: _fake_hw("NVIDIA L4"),
+                unassign_fn=lambda: unassign_called.__setitem__("count", unassign_called["count"] + 1),
+                shutdown_grace_sec=0.05,
+            )
+            agent._last_active_ts = time.time() - 300
+            agent.publish_heartbeat()
+
+            handler = create_handler(
+                ep_file,
+                allow_remote=False,
+                monitor_root=monitor_root,
+                state_dir=state_dir,
+            )
+            web = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            wt = threading.Thread(target=web.serve_forever, daemon=True)
+            wt.start()
+            base = f"http://127.0.0.1:{web.server_port}"
+            try:
+                req_ka = urllib.request.Request(
+                    f"{base}/api/keepalive?limit=6",
+                    data=b"",
+                    headers={"X-H3-Action": "keepalive"},
+                    method="POST",
+                )
+                with opener.open(req_ka, timeout=5) as resp:
+                    self.assertEqual(resp.status, 202)
+                    ka_raw = resp.read().decode("utf-8")
+                self.assertNotIn(agent.api_key, ka_raw)
+                ka_res = json.loads(ka_raw)
+                self.assertTrue(ka_res["ok"])
+                self.assertEqual(ka_res["channel"], "drive")
+                self.assertEqual(ka_res["status"], "queued")
+                self.assertEqual(ka_res["via"], "drive")
+                self.assertTrue(ka_res["snapshot"]["online"])
+                cmd_id = ka_res["cmd_id"]
+
+                acks = agent.poll_drive_commands_once()
+                self.assertEqual(len(acks), 1)
+                self.assertEqual(acks[0]["status"], "succeeded")
+                self.assertEqual(agent.lifecycle["idle_seconds"], 0)
+
+                with opener.open(f"{base}/api/v2/commands/{cmd_id}", timeout=5) as resp:
+                    cmd_status = json.loads(resp.read().decode("utf-8"))
+                self.assertEqual(cmd_status["command"]["status"], "succeeded")
+
+                # Missing / invalid instance_id handling
+                req_404 = urllib.request.Request(
+                    f"{base}/api/keepalive?instance_id=nonexistent_inst",
+                    data=b"",
+                    headers={"X-H3-Action": "keepalive"},
+                    method="POST",
+                )
+                with self.assertRaises(urllib.error.HTTPError) as ctx_404:
+                    opener.open(req_404, timeout=5)
+                self.assertEqual(ctx_404.exception.code, 404)
+
+                req_400 = urllib.request.Request(
+                    f"{base}/api/keepalive?instance_id=../bad",
+                    data=b"",
+                    headers={"X-H3-Action": "keepalive"},
+                    method="POST",
+                )
+                with self.assertRaises(urllib.error.HTTPError) as ctx_400:
+                    opener.open(req_400, timeout=5)
+                self.assertEqual(ctx_400.exception.code, 400)
+
+                # Drive-mode /api/shutdown routes to lifecycle.shutdown_now
+                req_sd = urllib.request.Request(
+                    f"{base}/api/shutdown?limit=6",
+                    data=b"",
+                    headers={"X-H3-Action": "shutdown"},
+                    method="POST",
+                )
+                with opener.open(req_sd, timeout=5) as resp:
+                    self.assertEqual(resp.status, 202)
+                    sd_raw = resp.read().decode("utf-8")
+                self.assertNotIn(agent.api_key, sd_raw)
+                sd_res = json.loads(sd_raw)
+                self.assertTrue(sd_res["ok"])
+                self.assertEqual(sd_res["channel"], "drive")
+                self.assertEqual(sd_res["status"], "queued")
+
+                sd_acks = agent.poll_drive_commands_once()
+                self.assertEqual(len(sd_acks), 1)
+                self.assertEqual(sd_acks[0]["action"], "lifecycle.shutdown_now")
+                deadline = time.monotonic() + 2.0
+                while unassign_called["count"] == 0 and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertEqual(unassign_called["count"], 1)
+            finally:
+                agent.stop()
+                web.shutdown()
+                web.server_close()
+
+        # 2. v2 ONLINE_LIVE (tunnel-enabled)
+        with tempfile.TemporaryDirectory() as tmp2:
+            tmp_dir = Path(tmp2)
+            monitor_root = tmp_dir / "_colab_monitor"
+            state_dir = tmp_dir / "local_state"
+            ep_file = tmp_dir / "active_endpoint.json"
+
+            agent_live = ColabAgent(
+                project="live_tunnel_proj",
+                label="Live Tunnel L4",
+                drive_backend=FuseDriveBackend(monitor_root),
+                run_mode="online_gateway",
+                api_key="live-tunnel-secret-token-67890",
+                hardware_collector=lambda: _fake_hw("NVIDIA L4"),
+            )
+            agent_live._last_active_ts = time.time() - 180
+            agent_live.start_http_server("127.0.0.1", 0)
+            agent_live.publish_heartbeat()
+
+            handler_live = create_handler(
+                ep_file,
+                allow_remote=False,
+                monitor_root=monitor_root,
+                state_dir=state_dir,
+            )
+            web_live = ThreadingHTTPServer(("127.0.0.1", 0), handler_live)
+            wt_live = threading.Thread(target=web_live.serve_forever, daemon=True)
+            wt_live.start()
+            base_live = f"http://127.0.0.1:{web_live.server_port}"
+            try:
+                req_live = urllib.request.Request(
+                    f"{base_live}/api/keepalive?limit=6",
+                    data=b"",
+                    headers={"X-H3-Action": "keepalive"},
+                    method="POST",
+                )
+                with opener.open(req_live, timeout=5) as resp:
+                    self.assertEqual(resp.status, 200)
+                    live_raw = resp.read().decode("utf-8")
+                self.assertNotIn(agent_live.api_key, live_raw)
+                live_res = json.loads(live_raw)
+                self.assertTrue(live_res["ok"])
+                self.assertEqual(live_res["channel"], "tunnel")
+                self.assertEqual(live_res["status"], "succeeded")
+                self.assertEqual(live_res["idle_seconds"], 0)
+            finally:
+                agent_live.stop()
+                web_live.shutdown()
+                web_live.server_close()
+
+        # 3. Static JS verification for v2 routing in triggerKeepalive & confirmShutdown
+        app_js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        ka_start = app_js.index("async function triggerKeepalive()")
+        ka_end = app_js.index("function openShutdownDialog()", ka_start)
+        ka_body = app_js[ka_start:ka_end]
+        self.assertIn("/api/v2/instances/", ka_body)
+        self.assertIn("lifecycle.keepalive", ka_body)
+
+        sd_start = app_js.index("async function confirmShutdown()")
+        sd_end = app_js.index("function setSourceMode(", sd_start)
+        sd_body = app_js[sd_start:sd_end]
+        self.assertIn("/api/v2/instances/", sd_body)
+        self.assertIn("lifecycle.shutdown_now", sd_body)
+
+    def test_unified_idle_timeout_gpu_guard_state_sync_and_injector_fallback(self) -> None:
+        import ast
+        from control.injector import generate_injected_cell
+
+        def _gpu_hw(util_pct: float) -> dict:
+            hw = _fake_hw("NVIDIA L4")
+            hw["gpu"]["util_gpu_pct"] = util_pct
+            return hw
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+
+            # 1. Idle auto-shutdown fires when running=0, gpu_util=0%, no lease, idle >= timeout
+            mon1 = tmp_dir / "mon1"
+            unassign_1 = {"count": 0}
+            agent_idle = ColabAgent(
+                project="idle_fire_proj",
+                label="Idle Fire Test",
+                drive_backend=FuseDriveBackend(mon1),
+                idle_timeout_minutes=1,
+                hardware_collector=lambda: _gpu_hw(0.0),
+                unassign_fn=lambda: unassign_1.__setitem__("count", unassign_1["count"] + 1),
+                shutdown_grace_sec=0.02,
+            )
+            try:
+                agent_idle.publish_heartbeat()
+                agent_idle._last_active_ts = time.time() - 120
+                agent_idle._check_deadline_and_idle()
+                deadline = time.monotonic() + 2.0
+                while unassign_1["count"] == 0 and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertEqual(unassign_1["count"], 1)
+                self.assertEqual(agent_idle.lifecycle["state"], "terminated")
+            finally:
+                agent_idle.stop()
+
+            # 2. GPU activity guard (>= 5%): refreshes idle_seconds to 0 and blocks idle shutdown
+            mon2 = tmp_dir / "mon2"
+            unassign_2 = {"count": 0}
+            agent_gpu = ColabAgent(
+                project="gpu_guard_proj",
+                label="GPU Guard Test",
+                drive_backend=FuseDriveBackend(mon2),
+                idle_timeout_minutes=1,
+                hardware_collector=lambda: _gpu_hw(50.0),
+                unassign_fn=lambda: unassign_2.__setitem__("count", unassign_2["count"] + 1),
+                shutdown_grace_sec=0.02,
+            )
+            try:
+                agent_gpu._last_active_ts = time.time() - 3600
+                snap_gpu = agent_gpu.publish_heartbeat()
+                self.assertEqual(snap_gpu["lifecycle"]["idle_seconds"], 0)
+                agent_gpu._check_deadline_and_idle()
+                time.sleep(0.08)
+                self.assertEqual(unassign_2["count"], 0)
+                self.assertEqual(agent_gpu.lifecycle["state"], "running")
+            finally:
+                agent_gpu.stop()
+
+            # 3. Keepalive lease & idle_timeout_minutes=0 both prevent idle shutdown even at 0% GPU
+            mon3 = tmp_dir / "mon3"
+            unassign_3 = {"count": 0}
+            agent_lease = ColabAgent(
+                project="lease_guard_proj",
+                label="Lease Guard Test",
+                drive_backend=FuseDriveBackend(mon3),
+                idle_timeout_minutes=1,
+                api_key="lease-secret-token-12345",
+                hardware_collector=lambda: _gpu_hw(0.0),
+                unassign_fn=lambda: unassign_3.__setitem__("count", unassign_3["count"] + 1),
+                shutdown_grace_sec=0.02,
+            )
+            try:
+                env_lease = build_action_envelope(
+                    agent_lease.instance_id,
+                    "lifecycle.set_keepalive_lease",
+                    {"duration_minutes": 30},
+                    api_key=agent_lease.api_key,
+                )
+                code, _ = agent_lease.execute_envelope(env_lease, channel="tunnel")
+                self.assertEqual(code, 200)
+                agent_lease._last_active_ts = time.time() - 3600
+                agent_lease._check_deadline_and_idle()
+                time.sleep(0.08)
+                self.assertEqual(unassign_3["count"], 0)
+
+                env_disable = build_action_envelope(
+                    agent_lease.instance_id,
+                    "lifecycle.set_idle_policy",
+                    {"idle_timeout_minutes": 0},
+                    api_key=agent_lease.api_key,
+                )
+                code, _ = agent_lease.execute_envelope(env_disable, channel="tunnel")
+                self.assertEqual(code, 200)
+                agent_lease.lifecycle["keepalive_lease_until"] = None
+                agent_lease._last_active_ts = time.time() - 3600
+                agent_lease._check_deadline_and_idle()
+                time.sleep(0.08)
+                self.assertEqual(unassign_3["count"], 0)
+            finally:
+                agent_lease.stop()
+
+            # 4. Bidirectional attach_state(state_ref=STATE, jobs_ref=JOBS) single-source-of-truth sync
+            mon4 = tmp_dir / "mon4"
+            unassign_4 = {"count": 0}
+            state_ref: dict = {"last_active": time.time() - 600, "active_jobs": 0, "idle_timeout_minutes": 45, "shutdown_requested": False}
+            jobs_ref: dict = {}
+            agent_sync = ColabAgent(
+                project="state_sync_proj",
+                label="State Sync Test",
+                drive_backend=FuseDriveBackend(mon4),
+                idle_timeout_minutes=60,
+                api_key="sync-secret-token-67890",
+                hardware_collector=lambda: _gpu_hw(0.0),
+                unassign_fn=lambda: unassign_4.__setitem__("count", unassign_4["count"] + 1),
+                shutdown_grace_sec=0.02,
+            )
+            try:
+                agent_sync.attach_state(state_ref=state_ref, jobs_ref=jobs_ref)
+                self.assertEqual(agent_sync.lifecycle["idle_timeout_minutes"], 45)
+
+                env_policy = build_action_envelope(
+                    agent_sync.instance_id,
+                    "lifecycle.set_idle_policy",
+                    {"idle_timeout_minutes": 90},
+                    api_key=agent_sync.api_key,
+                )
+                code, _ = agent_sync.execute_envelope(env_policy, channel="tunnel")
+                self.assertEqual(code, 200)
+                self.assertEqual(agent_sync.lifecycle["idle_timeout_minutes"], 90)
+                self.assertEqual(state_ref["idle_timeout_minutes"], 90)
+                hb_file = mon4 / "instances" / f"{agent_sync.instance_id}.json"
+                self.assertTrue(hb_file.is_file())
+                hb_data = json.loads(hb_file.read_text(encoding="utf-8"))
+                self.assertEqual(hb_data["lifecycle"]["idle_timeout_minutes"], 90)
+
+                env_lease2 = build_action_envelope(
+                    agent_sync.instance_id,
+                    "lifecycle.set_keepalive_lease",
+                    {"duration_minutes": 30},
+                    api_key=agent_sync.api_key,
+                )
+                code, _ = agent_sync.execute_envelope(env_lease2, channel="tunnel")
+                self.assertEqual(code, 200)
+                self.assertIsNotNone(state_ref.get("keepalive_lease_until"))
+                self.assertTrue(agent_sync.is_keepalive_lease_active())
+
+                # Clear lease and simulate sync job via STATE["active_jobs"] = 1
+                agent_sync.lifecycle["keepalive_lease_until"] = None
+                state_ref["keepalive_lease_until"] = None
+                state_ref["last_active"] = time.time() - 500
+                agent_sync._last_active_ts = state_ref["last_active"]
+                state_ref["active_jobs"] = 1
+                snap_busy = agent_sync.build_snapshot()
+                self.assertGreaterEqual(snap_busy["workload"]["running"], 1)
+                self.assertEqual(snap_busy["lifecycle"]["idle_seconds"], 0)
+
+                # Safe shutdown propagates shutdown_requested to STATE
+                agent_sync._schedule_safe_shutdown(reason="test")
+                self.assertTrue(state_ref["shutdown_requested"])
+                deadline = time.monotonic() + 2.0
+                while unassign_4["count"] == 0 and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertEqual(unassign_4["count"], 1)
+            finally:
+                agent_sync.stop()
+
+        # 5. Injector dynamic IDLE_TIMEOUT_MINUTES lookup + FUSE fallback in oauth_silent mode
+        oauth_cell = generate_injected_cell(
+            Path("demo.ipynb"),
+            {"detected_mode": "oauth_silent"},
+            idle_timeout_minutes=60,
+        )
+        oauth_src = "".join(oauth_cell["source"])
+        ast.parse(oauth_src)
+        self.assertIn("IDLE_TIMEOUT_MINUTES", oauth_src)
+        self.assertIn("FuseDriveBackend", oauth_src)
+        self.assertIn("OAuthDriveBackend", oauth_src)
+        self.assertIn("publish_heartbeat()", oauth_src)
+
+        fuse_cell = generate_injected_cell(
+            Path("demo_fuse.ipynb"),
+            {"detected_mode": "fuse_mounted"},
+            idle_timeout_minutes=60,
+        )
+        fuse_src = "".join(fuse_cell["source"])
+        ast.parse(fuse_src)
+        self.assertIn("IDLE_TIMEOUT_MINUTES", fuse_src)
+        self.assertIn("FuseDriveBackend", fuse_src)
+        self.assertIn("publish_heartbeat()", fuse_src)
+
 
 if __name__ == "__main__":
     unittest.main()
