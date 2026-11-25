@@ -547,6 +547,7 @@
     // v2.0 Control Plane state
     v2Instances: [],
     selectedInstanceId: null,
+    lastRenderedSelectedId: null,
     currentV2Instance: null,
     v2Commands: [],
     inspectorTab: "logs", // "logs" | "processes"
@@ -1064,11 +1065,15 @@
   }
 
   // --- Tooltip & Modal Dialog helpers ---
+  let activeTooltipTarget = null;
+  let delegatedTooltipsReady = false;
+
   function showTooltip(anchor, title, meta) {
     const tip = document.getElementById("chart-tooltip");
     const titleEl = document.getElementById("tooltip-title");
     const metaEl = document.getElementById("tooltip-meta");
     if (!tip || !titleEl || !metaEl) return;
+    activeTooltipTarget = anchor || null;
     titleEl.textContent = title || "";
     if (meta) {
       metaEl.textContent = meta;
@@ -1093,16 +1098,71 @@
   }
 
   function hideTooltip() {
+    activeTooltipTarget = null;
     const tip = document.getElementById("chart-tooltip");
     if (tip) tip.hidden = true;
   }
 
+  function setupDelegatedTooltips() {
+    if (delegatedTooltipsReady) return;
+    delegatedTooltipsReady = true;
+
+    const showFromNode = (node) => {
+      if (!node) return;
+      const txt = node.dataset.tooltip;
+      if (txt) showTooltip(node, txt, node.dataset.tooltipMeta || "");
+    };
+
+    document.addEventListener("pointerover", (ev) => {
+      if (ev.pointerType === "touch") return;
+      const target = ev.target instanceof Element ? ev.target.closest("[data-tooltip]") : null;
+      if (target && target.dataset.tooltip) {
+        showFromNode(target);
+      } else if (activeTooltipTarget && !activeTooltipTarget.contains(ev.target)) {
+        hideTooltip();
+      }
+    });
+
+    document.addEventListener("pointerout", (ev) => {
+      if (!activeTooltipTarget) return;
+      const related = ev.relatedTarget instanceof Element ? ev.relatedTarget : null;
+      if (related && (activeTooltipTarget.contains(related) || related.closest("[data-tooltip]"))) {
+        return;
+      }
+      hideTooltip();
+    });
+
+    document.addEventListener("focusin", (ev) => {
+      const target = ev.target instanceof Element ? ev.target.closest("[data-tooltip]") : null;
+      if (target && target.dataset.tooltip) {
+        showFromNode(target);
+      }
+    });
+
+    document.addEventListener("focusout", (ev) => {
+      if (activeTooltipTarget && (ev.target === activeTooltipTarget || activeTooltipTarget.contains(ev.target))) {
+        hideTooltip();
+      }
+    });
+
+    document.addEventListener(
+      "scroll",
+      (ev) => {
+        if (!activeTooltipTarget) return;
+        if (ev.target === document || (ev.target instanceof Node && ev.target.contains(activeTooltipTarget))) {
+          hideTooltip();
+        }
+      },
+      true
+    );
+  }
+
   function attachTooltipTarget(node) {
-    if (!node || node.dataset.tooltipBound === "true") return;
+    if (!node || delegatedTooltipsReady || node.dataset.tooltipBound === "true") return;
     node.dataset.tooltipBound = "true";
     const show = () => {
       const txt = node.dataset.tooltip;
-      if (txt) showTooltip(node, txt, "");
+      if (txt) showTooltip(node, txt, node.dataset.tooltipMeta || "");
     };
     node.addEventListener("mouseenter", show);
     node.addEventListener("mouseleave", hideTooltip);
@@ -2244,7 +2304,19 @@
     const keepaliveBtn = document.getElementById("keepalive-now");
     const shutdownBtn = document.getElementById("shutdown-now");
     const isDemo = appState.sourceMode === "demo";
+    const inst = appState.currentV2Instance;
+    const isV2 = Boolean(!isDemo && inst && !inst.is_legacy);
     const ready = isDemo ? appState.demoOnline : Boolean(snap && snap.online && snap.has_api_key);
+    const canKeepalive = isDemo
+      ? appState.demoOnline
+      : isV2
+        ? Boolean(isV2Online(inst) && inst.has_api_key && hasCap(inst, "lifecycle.keepalive"))
+        : ready;
+    const canShutdown = isDemo
+      ? appState.demoOnline
+      : isV2
+        ? Boolean(isV2Online(inst) && inst.has_api_key && hasCap(inst, "lifecycle.shutdown_now"))
+        : ready;
 
     if (keepaliveBtn) {
       if (appState.isKeepingAlive) {
@@ -2254,7 +2326,7 @@
       } else {
         keepaliveBtn.textContent = "手动保活";
         keepaliveBtn.removeAttribute("aria-busy");
-        keepaliveBtn.setAttribute("aria-disabled", String(!ready || appState.isShuttingDown));
+        keepaliveBtn.setAttribute("aria-disabled", String(!canKeepalive || appState.isShuttingDown));
       }
     }
 
@@ -2270,7 +2342,7 @@
       } else {
         shutdownBtn.textContent = "一键关机";
         shutdownBtn.removeAttribute("aria-busy");
-        shutdownBtn.setAttribute("aria-disabled", String(!ready || appState.isKeepingAlive));
+        shutdownBtn.setAttribute("aria-disabled", String(!canShutdown || appState.isKeepingAlive));
       }
     }
   }
@@ -2324,8 +2396,197 @@
     );
   }
 
+  function isInstanceOffline(inst) {
+    return Boolean(!inst || !inst.liveness_state || inst.liveness_state === "OFFLINE");
+  }
+
+  function formatInstanceHwMeta(inst) {
+    const hwLabel = inst.hardware?.gpu?.available
+      ? (inst.hardware.gpu.name || "GPU")
+      : (Number(inst.hardware?.ram?.total_gib || 0) >= 24 ? "CPU High-RAM" : "CPU");
+    const prog = inst.workload?.progress;
+    const progText = prog && prog.total > 0 ? ` · ${Math.round((prog.done / prog.total) * 100)}%` : "";
+    return `${hwLabel}${progText}`;
+  }
+
+  function selectInstanceById(instanceId) {
+    if (!instanceId || appState.selectedInstanceId === instanceId) return;
+    appState.selectedInstanceId = instanceId;
+    if (appState.sourceMode === "demo" && appState.demoV2State) {
+      appState.demoV2State.selectedId = instanceId;
+    } else {
+      appState.lastLogPayload = null;
+      appState.lastProcesses = [];
+    }
+    loadSnapshot();
+  }
+
+  function syncInstanceTabsScrollHints(tabsHost) {
+    if (!tabsHost) return;
+    if (tabsHost._scrollHintObserver) {
+      tabsHost._scrollHintObserver.disconnect();
+      tabsHost._scrollHintObserver = null;
+    }
+    tabsHost.classList.remove("more-start", "more-end");
+    if (typeof CSS !== "undefined" && CSS.supports("animation-timeline", "scroll()")) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    const tabs = [...tabsHost.querySelectorAll(".instance-tab")];
+    if (tabs.length < 2) return;
+    const first = tabs[0];
+    const last = tabs[tabs.length - 1];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const { target, intersectionRatio } of entries) {
+          tabsHost.classList.toggle(target === first ? "more-start" : "more-end", intersectionRatio < 1);
+        }
+      },
+      { root: tabsHost, threshold: 1, rootMargin: "1px" }
+    );
+    observer.observe(first);
+    observer.observe(last);
+    tabsHost._scrollHintObserver = observer;
+  }
+
+  function setupInstanceTabsKeyboard(tabsHost) {
+    if (!tabsHost || tabsHost.dataset.kbBound === "true") return;
+    tabsHost.dataset.kbBound = "true";
+    if ("focusGroup" in HTMLElement.prototype) return;
+
+    const getTabs = () => [...tabsHost.querySelectorAll(".instance-tab")];
+    tabsHost.addEventListener("focusin", ({ target }) => {
+      const tabs = getTabs();
+      if (tabs.includes(target)) {
+        for (const t of tabs) t.tabIndex = t === target ? 0 : -1;
+      }
+    });
+    tabsHost.addEventListener("keydown", (event) => {
+      const tabs = getTabs();
+      const index = tabs.indexOf(document.activeElement);
+      if (index < 0 || !tabs.length) return;
+      const rtl = getComputedStyle(tabsHost).direction === "rtl";
+      const steps = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 };
+      let nextIndex = null;
+      if (Object.hasOwn(steps, event.key)) {
+        nextIndex = (index + steps[event.key] + tabs.length) % tabs.length;
+      } else if (event.key === "Home") {
+        nextIndex = 0;
+      } else if (event.key === "End") {
+        nextIndex = tabs.length - 1;
+      }
+      if (nextIndex !== null) {
+        event.preventDefault();
+        tabs[nextIndex]?.focus();
+      }
+    });
+  }
+
+  function closeInstanceHistoryMenu(restoreFocus = false) {
+    const trigger = document.getElementById("instance-history-trigger");
+    const menu = document.getElementById("instance-history-menu");
+    if (!trigger || !menu) return;
+    const hasNativePopover = Object.hasOwn(HTMLElement.prototype, "popover");
+    const isOpen = hasNativePopover ? menu.matches(":popover-open") : menu.dataset.open === "true";
+    if (!isOpen) return;
+    if (hasNativePopover) {
+      menu.hidePopover();
+    } else {
+      delete menu.dataset.open;
+      trigger.setAttribute("aria-expanded", "false");
+    }
+    if (restoreFocus) trigger.focus();
+  }
+
+  function setupInstanceHistoryPopover() {
+    const trigger = document.getElementById("instance-history-trigger");
+    const menu = document.getElementById("instance-history-menu");
+    if (!trigger || !menu || trigger.dataset.popoverBound === "true") return;
+    trigger.dataset.popoverBound = "true";
+
+    const hasNativePopover = Object.hasOwn(HTMLElement.prototype, "popover");
+    const getOptions = () => [...menu.querySelectorAll(".instance-history-option")];
+    const isMenuOpen = () => (hasNativePopover ? menu.matches(":popover-open") : menu.dataset.open === "true");
+    const positionMenu = () => positionAnchoredPopoverFallback(trigger, menu, "--hist-top", "--hist-left", false);
+
+    const focusOptionByMode = (mode) => {
+      const options = getOptions();
+      if (!options.length) return;
+      let target = options.find((o) => o.getAttribute("aria-selected") === "true") || options[0];
+      if (mode === "first") target = options[0];
+      else if (mode === "last") target = options[options.length - 1];
+      target?.focus();
+    };
+
+    const openMenu = (focusMode = "selected") => {
+      positionMenu();
+      if (hasNativePopover) {
+        if (!menu.matches(":popover-open")) menu.showPopover();
+      } else {
+        menu.dataset.open = "true";
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      positionMenu();
+      window.requestAnimationFrame(() => focusOptionByMode(focusMode));
+    };
+
+    if (hasNativePopover) {
+      menu.addEventListener("toggle", (ev) => {
+        const open = ev.newState === "open";
+        trigger.setAttribute("aria-expanded", String(open));
+        if (open) positionMenu();
+      });
+    } else {
+      document.addEventListener("pointerdown", (ev) => {
+        if (isMenuOpen() && !menu.contains(ev.target) && !trigger.contains(ev.target)) {
+          closeInstanceHistoryMenu(false);
+        }
+      });
+    }
+
+    trigger.addEventListener("click", () => {
+      if (isMenuOpen()) closeInstanceHistoryMenu(false);
+      else openMenu("selected");
+    });
+
+    trigger.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowDown" || ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        openMenu("selected");
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        openMenu("last");
+      }
+    });
+
+    menu.addEventListener("keydown", (ev) => {
+      const options = getOptions();
+      const idx = options.indexOf(document.activeElement);
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        options[(idx + 1 + options.length) % options.length]?.focus();
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        options[(idx - 1 + options.length) % options.length]?.focus();
+      } else if (ev.key === "Home") {
+        ev.preventDefault();
+        options[0]?.focus();
+      } else if (ev.key === "End") {
+        ev.preventDefault();
+        options[options.length - 1]?.focus();
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        closeInstanceHistoryMenu(true);
+      } else if (ev.key === "Tab") {
+        closeInstanceHistoryMenu(false);
+      }
+    });
+  }
+
   function renderInstanceBar() {
     const tabsHost = document.getElementById("instance-tabs");
+    const historyWrap = document.getElementById("instance-history-wrap");
+    const historyLabel = document.getElementById("instance-history-label");
+    const historyMenu = document.getElementById("instance-history-menu");
     const badge = document.getElementById("active-channel-badge");
     const fleetBtn = document.getElementById("fleet-drain-all");
     const callout = document.getElementById("instance-mode-callout");
@@ -2338,7 +2599,14 @@
     const cur = appState.currentV2Instance;
 
     if (!list.length) {
+      delete tabsHost.dataset.renderSig;
+      syncInstanceTabsScrollHints(tabsHost);
       tabsHost.replaceChildren(el("span", "未发现活跃实例（兼容单端点模式）", "chart-caption"));
+      if (historyWrap) historyWrap.hidden = true;
+      if (historyMenu) {
+        closeInstanceHistoryMenu(false);
+        delete historyMenu.dataset.renderSig;
+      }
       if (badge) {
         badge.textContent = "通道：Legacy / 离线";
         delete badge.dataset.channel;
@@ -2350,54 +2618,196 @@
       return;
     }
 
-    const tabNodes = list.map((inst) => {
-      const btn = el("button", undefined, "instance-tab");
-      btn.type = "button";
-      btn.setAttribute("role", "tab");
-      const selected = cur && inst.instance_id === cur.instance_id;
-      btn.setAttribute("aria-selected", String(Boolean(selected)));
+    const FOLD_OFFLINE_THRESHOLD = 3;
+    const activeList = list.filter((i) => !isInstanceOffline(i));
+    const offlineList = list.filter((i) => isInstanceOffline(i));
 
-      const dot = el("span", undefined, "status-dot");
-      dot.dataset.state = livenessDotState(inst.liveness_state);
-      dot.setAttribute("aria-hidden", "true");
+    let visibleTabs;
+    let showHistoryMenu;
+    if (activeList.length > 0) {
+      visibleTabs = [...activeList];
+      if (cur && isInstanceOffline(cur)) {
+        visibleTabs.push(cur);
+      }
+      showHistoryMenu = offlineList.length > 0;
+    } else if (offlineList.length > FOLD_OFFLINE_THRESHOLD) {
+      const pinned = (cur && offlineList.find((i) => i.instance_id === cur.instance_id)) || offlineList[0];
+      visibleTabs = pinned ? [pinned] : [];
+      showHistoryMenu = true;
+    } else {
+      visibleTabs = [...offlineList];
+      showHistoryMenu = false;
+    }
 
-      const hwLabel = inst.hardware?.gpu?.available
-        ? (inst.hardware.gpu.name || "GPU")
-        : (Number(inst.hardware?.ram?.total_gib || 0) >= 24 ? "CPU High-RAM" : "CPU");
-      const prog = inst.workload?.progress;
-      const progText = prog && prog.total > 0 ? ` · ${Math.round((prog.done / prog.total) * 100)}%` : "";
-      const meta = el("span", `${hwLabel}${progText}`, "instance-tab-meta");
+    const selectedId = cur?.instance_id || null;
+    const hasSelectedInVisible = visibleTabs.some((i) => i.instance_id === selectedId);
+    const tabsSig = visibleTabs
+      .map((inst) => {
+        const hwMeta = formatInstanceHwMeta(inst);
+        return [
+          inst.instance_id,
+          inst.label || "",
+          inst.liveness_state || "",
+          hwMeta,
+          inst.instance_id === selectedId ? "1" : "0",
+          inst.active_channel || "",
+          inst.tunnel?.enabled ? "1" : "0",
+          inst.tunnel?.healthy ? "1" : "0",
+          inst.is_legacy ? "1" : "0"
+        ].join("\x1f");
+      })
+      .join("\x1e");
 
-      let chPill = null;
-      if (!inst.is_legacy && !inst.tunnel?.enabled) {
-        chPill = el("span", "无隧道", "instance-tab-channel");
-        chPill.dataset.channel = "drive";
-        chPill.dataset.tooltip = "无 HTTPS 隧道：经 Google Drive 心跳同步监控与带外指令";
-      } else if (isTunnelDegraded(inst)) {
-        chPill = el("span", "隧道降级", "instance-tab-channel");
-        chPill.dataset.channel = "degraded";
-        chPill.dataset.tooltip = "HTTPS 隧道不可达，已降级为 Google Drive 带外信箱通道";
-      } else if (inst.active_channel === "tunnel") {
-        chPill = el("span", "HTTPS", "instance-tab-channel");
-        chPill.dataset.channel = "tunnel";
+    if (tabsHost.dataset.renderSig !== tabsSig) {
+      const prevScrollLeft = tabsHost.scrollLeft;
+      const focusedInstId = tabsHost.contains(document.activeElement)
+        ? document.activeElement.closest(".instance-tab")?.dataset.instanceId || null
+        : null;
+      const useRovingTabindex = !("focusGroup" in HTMLElement.prototype);
+
+      const tabNodes = visibleTabs.map((inst, idx) => {
+        const btn = el("button", undefined, "instance-tab");
+        btn.type = "button";
+        btn.setAttribute("role", "tab");
+        const selected = Boolean(selectedId && inst.instance_id === selectedId);
+        const isOffline = isInstanceOffline(inst);
+        const fullName = inst.label || inst.instance_id;
+        const hwMeta = formatInstanceHwMeta(inst);
+        const stateText = livenessLabel(inst.liveness_state);
+
+        btn.setAttribute("aria-selected", String(selected));
+        btn.toggleAttribute("focusgroupstart", selected);
+        btn.dataset.instanceId = inst.instance_id;
+        btn.dataset.liveness = isOffline ? "offline" : "active";
+        if (useRovingTabindex) {
+          btn.tabIndex = selected || (!hasSelectedInVisible && idx === 0) ? 0 : -1;
+        }
+
+        const dot = el("span", undefined, "status-dot");
+        dot.dataset.state = livenessDotState(inst.liveness_state);
+        dot.setAttribute("aria-hidden", "true");
+
+        const nameEl = el("span", fullName, "instance-tab-name");
+        const srStatus = el("span", `（${stateText}）`, "sr-only");
+        const meta = el("span", hwMeta, "instance-tab-meta");
+
+        let chPill = null;
+        let channelHint = "";
+        if (!isOffline) {
+          if (!inst.is_legacy && !inst.tunnel?.enabled) {
+            chPill = el("span", "无隧道", "instance-tab-channel");
+            chPill.dataset.channel = "drive";
+            channelHint = "Google Drive 带外心跳与指令通道";
+            chPill.dataset.tooltip = "无 HTTPS 隧道：经 Google Drive 心跳同步监控与带外指令";
+          } else if (isTunnelDegraded(inst)) {
+            chPill = el("span", "隧道降级", "instance-tab-channel");
+            chPill.dataset.channel = "degraded";
+            channelHint = "HTTPS 隧道不可达，已降级为 Drive 带外通道";
+            chPill.dataset.tooltip = "HTTPS 隧道不可达，已降级为 Google Drive 带外信箱通道";
+          } else if (inst.active_channel === "tunnel") {
+            chPill = el("span", "HTTPS", "instance-tab-channel");
+            chPill.dataset.channel = "tunnel";
+            channelHint = "HTTPS 实时隧道";
+          }
+        } else {
+          channelHint = "历史离线记录";
+        }
+
+        btn.dataset.tooltip = fullName;
+        btn.dataset.tooltipMeta = [stateText, hwMeta, channelHint].filter(Boolean).join(" · ");
+
+        btn.append(dot, nameEl, srStatus, meta);
+        if (chPill) btn.append(chPill);
+        btn.addEventListener("click", () => selectInstanceById(inst.instance_id));
+        return btn;
+      });
+
+      tabsHost.replaceChildren(...tabNodes);
+      tabsHost.dataset.renderSig = tabsSig;
+      tabsHost.scrollLeft = prevScrollLeft;
+
+      if (focusedInstId) {
+        const refocused = tabNodes.find((n) => n.dataset.instanceId === focusedInstId);
+        if (refocused) refocused.focus({ preventScroll: true });
       }
 
-      btn.append(dot, document.createTextNode(inst.label || inst.instance_id), meta);
-      if (chPill) btn.append(chPill);
-      btn.addEventListener("click", () => {
-        if (appState.selectedInstanceId === inst.instance_id) return;
-        appState.selectedInstanceId = inst.instance_id;
-        if (appState.sourceMode === "demo" && appState.demoV2State) {
-          appState.demoV2State.selectedId = inst.instance_id;
-        } else {
-          appState.lastLogPayload = null;
-          appState.lastProcesses = [];
+      if (appState.lastRenderedSelectedId !== selectedId) {
+        appState.lastRenderedSelectedId = selectedId;
+        const selectedBtn = tabNodes.find((n) => n.getAttribute("aria-selected") === "true");
+        if (selectedBtn && typeof selectedBtn.scrollIntoView === "function") {
+          try {
+            selectedBtn.scrollIntoView({ block: "nearest", inline: "nearest", container: "nearest" });
+          } catch {
+            selectedBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }
         }
-        loadSnapshot();
-      });
-      return btn;
-    });
-    tabsHost.replaceChildren(...tabNodes);
+      }
+
+      syncInstanceTabsScrollHints(tabsHost);
+      if (activeTooltipTarget && !activeTooltipTarget.isConnected) {
+        hideTooltip();
+      }
+    }
+
+    if (historyWrap && historyMenu) {
+      historyWrap.hidden = !showHistoryMenu;
+      if (historyLabel) {
+        historyLabel.textContent = `历史离线 (${offlineList.length})`;
+      }
+      if (!showHistoryMenu) {
+        closeInstanceHistoryMenu(false);
+        delete historyMenu.dataset.renderSig;
+      } else {
+        const histSig = offlineList
+          .map((inst) => `${inst.instance_id}\x1f${inst.label || ""}\x1f${formatInstanceHwMeta(inst)}\x1f${inst.instance_id === selectedId ? "1" : "0"}`)
+          .join("\x1e");
+        if (historyMenu.dataset.renderSig !== histSig) {
+          const focusedHistId = historyMenu.contains(document.activeElement)
+            ? document.activeElement.closest(".instance-history-option")?.dataset.instanceId || null
+            : null;
+          const head = el("div", `历史离线实例 · 共 ${offlineList.length} 个`, "instance-history-head");
+          head.setAttribute("aria-hidden", "true");
+          const optNodes = offlineList.map((inst) => {
+            const opt = el("button", undefined, "webui-select-option instance-history-option");
+            opt.type = "button";
+            opt.setAttribute("role", "option");
+            const isSel = Boolean(selectedId && inst.instance_id === selectedId);
+            opt.setAttribute("aria-selected", String(isSel));
+            opt.dataset.instanceId = inst.instance_id;
+
+            const main = el("span", undefined, "webui-select-opt-main");
+            const check = el("span", "✓", "webui-select-opt-check");
+            check.setAttribute("aria-hidden", "true");
+            const dot = el("span", undefined, "status-dot");
+            dot.dataset.state = "offline";
+            dot.setAttribute("aria-hidden", "true");
+            const name = el("span", inst.label || inst.instance_id, "instance-history-opt-name");
+            main.append(check, dot, name);
+
+            const meta = el("span", formatInstanceHwMeta(inst), "instance-history-opt-meta");
+            opt.append(main, meta);
+
+            opt.addEventListener("click", () => {
+              closeInstanceHistoryMenu(false);
+              selectInstanceById(inst.instance_id);
+              window.requestAnimationFrame(() => {
+                const activeTab = [...tabsHost.querySelectorAll(".instance-tab")].find(
+                  (t) => t.dataset.instanceId === inst.instance_id
+                );
+                activeTab?.focus();
+              });
+            });
+            return opt;
+          });
+          historyMenu.replaceChildren(head, ...optNodes);
+          historyMenu.dataset.renderSig = histSig;
+          if (focusedHistId) {
+            const refocusedOpt = optNodes.find((n) => n.dataset.instanceId === focusedHistId);
+            if (refocusedOpt) refocusedOpt.focus({ preventScroll: true });
+          }
+        }
+      }
+    }
 
     if (badge) {
       const chMap = { tunnel: "通道 A · HTTPS 实时隧道", drive: "通道 B · Google Drive 信箱", none: "无可用控制通道" };
@@ -3880,17 +4290,39 @@
         return;
       }
       appState.demoIdleSeconds = 0;
-      await loadSnapshot();
-      showNotice("[演示样本] 已模拟手动保活，空闲计时已重置为 0s（未连接真实 Colab 实例）。");
+      if (appState.currentV2Instance) {
+        await dispatchV2Action("lifecycle.keepalive", {});
+      } else {
+        await loadSnapshot();
+        showNotice("[演示样本] 已模拟手动保活，空闲计时已重置为 0s（未连接真实 Colab 实例）。");
+      }
       return;
     }
-    if (!appState.snapshot || !appState.snapshot.online) {
-      showNotice("当前 Colab 实例离线，无法发送保活指令。");
-      return;
-    }
-    if (!appState.snapshot.has_api_key) {
-      showNotice("active_endpoint.json 缺少 api_key，无法鉴权保活。");
-      return;
+
+    const inst = appState.currentV2Instance;
+    const isV2 = Boolean(inst && !inst.is_legacy);
+    if (isV2) {
+      if (!isV2Online(inst)) {
+        showNotice("当前 Colab 实例离线，无法发送保活指令。");
+        return;
+      }
+      if (!inst.has_api_key) {
+        showNotice("缺少实例鉴权密钥（_colab_monitor/secrets），无法签名保活。");
+        return;
+      }
+      if (!hasCap(inst, "lifecycle.keepalive")) {
+        showNotice("当前实例未声明 lifecycle.keepalive 能力。");
+        return;
+      }
+    } else {
+      if (!appState.snapshot || !appState.snapshot.online) {
+        showNotice("当前 Colab 实例离线，无法发送保活指令。");
+        return;
+      }
+      if (!appState.snapshot.has_api_key) {
+        showNotice("active_endpoint.json 缺少 api_key，无法鉴权保活。");
+        return;
+      }
     }
 
     appState.isKeepingAlive = true;
@@ -3905,34 +4337,63 @@
     appState.inFlightSnapshot = false;
     document.getElementById("dashboard-shell")?.classList.remove("is-loading");
 
+    let shouldReload = false;
     try {
-      const resp = await fetch(`/api/keepalive?limit=${appState.outputLimit}`, {
-        method: "POST",
-        headers: { "X-H3-Action": "keepalive" },
-        cache: "no-store"
-      });
-      const data = await resp.json().catch(() => null);
-      if (data && data.snapshot && seq === appState.requestSeq) {
-        renderAll(data.snapshot);
-      }
-      if (resp.ok && data && data.ok) {
-        const timeoutM = Number(data.idle_timeout_minutes ?? 0);
-        const idleS = Number(data.idle_seconds ?? 0);
-        const modeNote = data.via === "jobs_auth_fallback" ? "（兼容模式）" : "";
-        if (timeoutM > 0) {
-          showNotice(`手动保活成功${modeNote}：空闲计时已重置，距自动释放剩余 ${Math.max(0, timeoutM - idleS / 60).toFixed(1)} 分钟。`);
+      if (isV2) {
+        const resp = await fetch(`/api/v2/instances/${encodeURIComponent(inst.instance_id)}/actions?limit=${appState.outputLimit}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Colab-Action": "lifecycle.keepalive"
+          },
+          body: JSON.stringify({ action: "lifecycle.keepalive", params: {} }),
+          cache: "no-store"
+        });
+        const data = await resp.json().catch(() => null);
+        if (resp.ok && data && data.ok) {
+          shouldReload = true;
+          if (data.channel === "drive" || data.status === "queued") {
+            showNotice(`[云盘信箱] 手动保活指令已入队（${data.cmd_id || "v2"}），等待实例轮询消费（约 15–30s 生效）。`);
+          } else {
+            showNotice(`[实时隧道] 手动保活成功：${data.message || "空闲计时已重置。"}`);
+          }
         } else {
-          showNotice(`手动保活成功${modeNote}：网关活跃时间已更新。`);
+          showNotice("保活失败：" + (data?.message || data?.error || `HTTP ${resp.status}`));
         }
       } else {
-        showNotice("保活失败：" + (data?.error || `HTTP ${resp.status}`));
+        const iidParam = inst?.is_legacy && inst?.instance_id ? `&instance_id=${encodeURIComponent(inst.instance_id)}` : "";
+        const resp = await fetch(`/api/keepalive?limit=${appState.outputLimit}${iidParam}`, {
+          method: "POST",
+          headers: { "X-H3-Action": "keepalive" },
+          cache: "no-store"
+        });
+        const data = await resp.json().catch(() => null);
+        if (data && data.snapshot && seq === appState.requestSeq) {
+          renderAll(data.snapshot);
+        }
+        if (resp.ok && data && data.ok) {
+          const timeoutM = Number(data.idle_timeout_minutes ?? 0);
+          const idleS = Number(data.idle_seconds ?? 0);
+          const modeNote = data.via === "jobs_auth_fallback" ? "（兼容模式）" : "";
+          if (timeoutM > 0) {
+            showNotice(`手动保活成功${modeNote}：空闲计时已重置，距自动释放剩余 ${Math.max(0, timeoutM - idleS / 60).toFixed(1)} 分钟。`);
+          } else {
+            showNotice(`手动保活成功${modeNote}：网关活跃时间已更新。`);
+          }
+        } else {
+          showNotice("保活失败：" + (data?.error || `HTTP ${resp.status}`));
+        }
       }
     } catch (err) {
       showNotice("保活请求异常：" + (err?.message || err));
     } finally {
       appState.isKeepingAlive = false;
       syncActionButtons(appState.snapshot);
-      scheduleNextPoll();
+      if (shouldReload) {
+        loadSnapshot();
+      } else {
+        scheduleNextPoll();
+      }
     }
   }
 
@@ -3941,9 +4402,25 @@
       showNotice("关机指令已发送，正在等待 Colab 实例释放…");
       return;
     }
-    if (appState.sourceMode === "demo") {
+    const isDemo = appState.sourceMode === "demo";
+    const inst = appState.currentV2Instance;
+    const isV2 = Boolean(!isDemo && inst && !inst.is_legacy);
+    if (isDemo) {
       if (!appState.demoOnline) {
         showNotice("[演示样本] 当前模拟实例已处于离线状态。");
+        return;
+      }
+    } else if (isV2) {
+      if (!isV2Online(inst)) {
+        showNotice("当前 Colab 实例已处于离线状态。");
+        return;
+      }
+      if (!inst.has_api_key) {
+        showNotice("缺少实例鉴权密钥（_colab_monitor/secrets），无法签名关机。");
+        return;
+      }
+      if (!hasCap(inst, "lifecycle.shutdown_now")) {
+        showNotice("当前实例未声明 lifecycle.shutdown_now 能力。");
         return;
       }
     } else {
@@ -3958,11 +4435,15 @@
     }
 
     const snap = appState.snapshot;
-    const isDemo = appState.sourceMode === "demo";
     const hwName = snap?.metrics?.gpu?.available ? (snap.metrics.gpu.name || "GPU") : "当前计算";
+    const isDriveV2 = Boolean(isV2 && (inst.active_channel === "drive" || !inst.tunnel?.enabled));
     document.getElementById("shutdown-dialog-desc").textContent = isDemo
       ? "[演示样本] 确认后仅在本地模拟实例下线状态，不会连接真实 Colab 实例。"
-      : `即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内执行 os.sync() 并释放 ${hwName} 算力。`;
+      : isV2
+        ? (isDriveV2
+          ? `即将通过 Google Drive 带外信箱发送远程释放指令（lifecycle.shutdown_now），实例将在约 15–60 秒内轮询消费并释放 ${hwName} 算力。`
+          : `即将向当前 Colab Agent 实时隧道发送远程释放指令（lifecycle.shutdown_now），实例将在数秒内安全释放 ${hwName} 算力。`)
+        : `即将向当前 Colab 网关发送远程释放指令（POST /v1/shutdown），实例将在约 3–8 秒内执行 os.sync() 并释放 ${hwName} 算力。`;
 
     const active = Number(snap?.health?.active_jobs || 0);
     const queued = Number(snap?.metrics?.jobs?.queued || 0);
@@ -3975,10 +4456,16 @@
       warning.hidden = true;
     }
 
-    const kvItems = [
-      ["目标端点", snap?.base_url || "—"],
-      ["活跃 / 排队任务", `${active} / ${queued}`]
-    ];
+    const kvItems = isV2
+      ? [
+          ["目标实例", inst.label || inst.instance_id],
+          [isDriveV2 ? "指令通道" : "目标端点", isDriveV2 ? "Google Drive 带外信箱" : (snap?.base_url || "—")],
+          ["活跃 / 排队任务", `${active} / ${queued}`]
+        ]
+      : [
+          ["目标端点", snap?.base_url || "—"],
+          ["活跃 / 排队任务", `${active} / ${queued}`]
+        ];
     const kvNodes = kvItems.map(([k, v]) => {
       const wrap = el("div");
       wrap.append(el("dt", k), el("dd", v));
@@ -4005,6 +4492,9 @@
       return;
     }
 
+    const inst = appState.currentV2Instance;
+    const isV2 = Boolean(inst && !inst.is_legacy);
+
     appState.isShuttingDown = true;
     clearPollTimer();
     clearShutdownTimers();
@@ -4018,20 +4508,50 @@
     appState.inFlightSnapshot = false;
     document.getElementById("dashboard-shell")?.classList.remove("is-loading");
 
+    let shouldReload = false;
     try {
-      const resp = await fetch(`/api/shutdown?limit=${appState.outputLimit}`, {
-        method: "POST",
-        headers: { "X-H3-Action": "shutdown" },
-        cache: "no-store"
-      });
-      const data = await resp.json().catch(() => null);
+      let resp;
+      let data;
+      if (isV2) {
+        resp = await fetch(`/api/v2/instances/${encodeURIComponent(inst.instance_id)}/actions?limit=${appState.outputLimit}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Colab-Action": "lifecycle.shutdown_now"
+          },
+          body: JSON.stringify({ action: "lifecycle.shutdown_now", params: {} }),
+          cache: "no-store"
+        });
+        data = await resp.json().catch(() => null);
+      } else {
+        const iidParam = inst?.is_legacy && inst?.instance_id ? `&instance_id=${encodeURIComponent(inst.instance_id)}` : "";
+        resp = await fetch(`/api/shutdown?limit=${appState.outputLimit}${iidParam}`, {
+          method: "POST",
+          headers: { "X-H3-Action": "shutdown" },
+          cache: "no-store"
+        });
+        data = await resp.json().catch(() => null);
+      }
       if (resp.ok && data && data.ok) {
-        if (data.snapshot && seq === appState.requestSeq) {
+        if (!isV2 && data.snapshot && seq === appState.requestSeq) {
           renderAll(data.snapshot);
         }
-        showNotice("关机指令已发送：" + (data.message || "Colab 实例将在数秒内安全释放。"));
+        const isDriveQueued = Boolean(isV2 && (data.channel === "drive" || data.status === "queued"));
+        if (isV2) {
+          shouldReload = true;
+          if (isDriveQueued) {
+            showNotice(`[云盘信箱] 关机指令已入队（${data.cmd_id || "v2"}），等待 Colab 实例轮询消费并安全释放（约 15–60s）。`);
+          } else {
+            showNotice("[实时隧道] 关机指令已发送：" + (data.message || "Colab 实例将在数秒内安全释放。"));
+          }
+        } else {
+          showNotice("关机指令已发送：" + (data.message || "Colab 实例将在数秒内安全释放。"));
+        }
         if (appState.isShuttingDown) {
-          const delays = [2500, 5000, 7500, 10000, 13000, 16000, 20000, 25000, 30000];
+          const delays = isDriveQueued
+            ? [5000, 12000, 20000, 30000, 45000, 60000]
+            : [2500, 5000, 7500, 10000, 13000, 16000, 20000, 25000, 30000];
+          const timeoutMs = isDriveQueued ? 65000 : 32000;
           for (const delay of delays) {
             appState.shutdownTimers.push(
               window.setTimeout(() => {
@@ -4047,27 +4567,35 @@
                 appState.isShuttingDown = false;
                 syncActionButtons(appState.snapshot);
                 if (appState.snapshot && appState.snapshot.online) {
-                  showNotice("实例在 30 秒后仍未断开隧道；若曾在 Colab 手动中断过 Step 6 守护循环，请在 Colab 运行 Step 7 释放。");
+                  showNotice(
+                    isDriveQueued
+                      ? "关机指令已发出但超过 65 秒尚未收到离线确认；请检查上方指令回执栏或使用 colab stop。"
+                      : "实例在 30 秒后仍未断开隧道；若曾在 Colab 手动中断过 Step 6 守护循环，请在 Colab 运行 Step 7 释放。"
+                  );
                 }
               }
-            }, 32000)
+            }, timeoutMs)
           );
         }
       } else {
         appState.isShuttingDown = false;
-        if (data && data.snapshot && seq === appState.requestSeq) {
+        if (!isV2 && data && data.snapshot && seq === appState.requestSeq) {
           renderAll(data.snapshot);
         } else {
           syncActionButtons(appState.snapshot);
         }
-        showNotice("关机失败：" + (data?.error || `HTTP ${resp.status}`));
+        showNotice("关机失败：" + (data?.message || data?.error || `HTTP ${resp.status}`));
       }
     } catch (err) {
       appState.isShuttingDown = false;
       syncActionButtons(appState.snapshot);
       showNotice("关机请求异常：" + (err?.message || err));
     } finally {
-      scheduleNextPoll();
+      if (shouldReload) {
+        loadSnapshot();
+      } else {
+        scheduleNextPoll();
+      }
     }
   }
 
@@ -4526,11 +5054,10 @@
       appState.archiveUserToggled = true;
     });
 
-    // WebUI custom tooltips, display settings popover & custom runtime selector
-    for (const node of document.querySelectorAll("[data-tooltip]")) {
-      attachTooltipTarget(node);
-    }
-    attachTooltipTarget(document.getElementById("provisioner-drive-badge"));
+    // WebUI custom tooltips, instance tabs, history popover, display settings & runtime selector
+    setupDelegatedTooltips();
+    setupInstanceTabsKeyboard(document.getElementById("instance-tabs"));
+    setupInstanceHistoryPopover();
     setupDisplaySettingsPopover();
     setupProvisionerRuntimeSelect();
 

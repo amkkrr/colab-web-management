@@ -26,7 +26,24 @@
     </header>
 
     <section class="instance-bar" id="instance-bar" aria-label="多实例切换与总控">
-      <div class="instance-tabs" id="instance-tabs" role="tablist" aria-label="Colab 实例列表"></div>
+      <div class="instance-nav">
+        <div class="instance-tabs" id="instance-tabs" role="tablist" focusgroup="tablist nomemory" aria-label="Colab 实例列表"></div>
+        <div class="instance-history-wrap" id="instance-history-wrap" hidden>
+          <button
+            class="ghost-button instance-history-trigger"
+            type="button"
+            id="instance-history-trigger"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+            aria-controls="instance-history-menu">
+            <span id="instance-history-label">历史离线</span>
+            <svg class="webui-select-chevron" aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6l4 4 4-4"></path>
+            </svg>
+          </button>
+          <div class="webui-select-menu instance-history-menu" id="instance-history-menu" popover="auto" role="listbox" aria-label="历史离线实例列表"></div>
+        </div>
+      </div>
       <div class="instance-bar-actions">
         <span class="channel-badge" id="active-channel-badge">通道：检测中</span>
         <button class="ghost-button danger-button" type="button" id="fleet-drain-all" hidden>全部排空关机</button>

@@ -82,6 +82,12 @@ class SageConformanceTests(unittest.TestCase):
         self.assertIn("uptime-range-group", inspector.ids)
         self.assertIn("uptime-distribution", inspector.ids)
         self.assertIn("uptime-table-body", inspector.ids)
+        self.assertIn('focusgroup="tablist nomemory"', html)
+        self.assertIn("instance-history-trigger", inspector.ids)
+        self.assertIn("instance-history-menu", inspector.ids)
+        tabs_start = html.index('id="instance-tabs"')
+        tabs_end = html.index("</div>", tabs_start)
+        self.assertGreater(html.index('id="instance-history-trigger"'), tabs_end)
 
     def test_css_sage_rules(self) -> None:
         for css_path in (ROOT / "web" / "styles").glob("*.css"):
@@ -123,6 +129,10 @@ class SageConformanceTests(unittest.TestCase):
         # Focus restoration after polling DOM rebuild
         self.assertIn("appState.lastFocusedTrigger.isConnected", app_js)
         self.assertIn("[data-detail-file]", app_js)
+        # Delegated tooltips, instance-tab keyboard & history popover
+        self.assertIn("setupDelegatedTooltips", app_js)
+        self.assertIn("setupInstanceHistoryPopover", app_js)
+        self.assertIn("setupInstanceTabsKeyboard", app_js)
 
     def test_ash_marble_and_sage_token_contrast_calibration(self) -> None:
         def normalize(val: str) -> str:
@@ -155,6 +165,11 @@ class SageConformanceTests(unittest.TestCase):
         # AUDIT-0002 / AUDIT-0003 layout & markup requirements
         self.assertIn("padding-block-start: 0.5rem;", base_css)
         self.assertIn(":is(.chart-scroll, .table-scroll):dir(rtl)", base_css)
+        self.assertIn(".instance-tab-name", base_css)
+        self.assertIn('.instance-tab[aria-selected="true"]::after', base_css)
+        self.assertIn('.instance-tab[data-liveness="offline"]', base_css)
+        self.assertIn(".instance-history-menu", base_css)
+        self.assertIn(".sr-only", base_css)
         self.assertIn("<noscript>", html)
         self.assertIn('id="mode-table-foot"', html)
         self.assertIn('id="uptime-table-foot"', html)

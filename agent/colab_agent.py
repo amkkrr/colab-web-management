@@ -576,6 +576,7 @@ class ColabAgent:
         heartbeat_interval_sec: int = 30,
         command_poll_interval_sec: int = 15,
         idle_timeout_minutes: int = 60,
+        gpu_active_util_pct: float = 5.0,
         auto_shutdown_after_batch: bool = False,
         project_drive_dir: Path | str | None = None,
         legacy_ep_file: Path | str | None = None,
@@ -601,6 +602,7 @@ class ColabAgent:
         self.started_at = _utc_iso(now)
         self.heartbeat_interval_sec = max(15, min(60, int(heartbeat_interval_sec)))
         self.command_poll_interval_sec = max(1, min(60, int(command_poll_interval_sec)))
+        self.gpu_active_util_pct = max(0.0, float(gpu_active_util_pct))
         self.project_drive_dir = Path(project_drive_dir).resolve() if project_drive_dir else None
         self.legacy_ep_file = Path(legacy_ep_file).resolve() if legacy_ep_file else None
         self._scratch_dirs = [Path(p).resolve() for p in (scratch_dirs or [])]
@@ -620,6 +622,7 @@ class ColabAgent:
         self._http_server: ThreadingHTTPServer | None = None
 
         self._last_active_ts = now
+        self._last_gpu_util_pct: float | None = None
         self._state_ref: dict[str, Any] | None = None
         self._jobs_ref: dict[str, Any] | None = None
 
@@ -819,24 +822,116 @@ class ColabAgent:
             }
         return out
 
+    def attach_state(
+        self,
+        *,
+        state_ref: dict[str, Any] | None = None,
+        jobs_ref: dict[str, Any] | None = None,
+    ) -> None:
+        """Bind host STATE/JOBS dicts bidirectionally as the single source of truth."""
+        with self._lock:
+            self._state_ref = state_ref
+            self._jobs_ref = jobs_ref
+            if state_ref is not None:
+                state_tm = state_ref.get("idle_timeout_minutes")
+                if isinstance(state_tm, int) and not isinstance(state_tm, bool) and 0 <= state_tm <= 360:
+                    self.lifecycle["idle_timeout_minutes"] = state_tm
+                else:
+                    state_ref["idle_timeout_minutes"] = self.lifecycle["idle_timeout_minutes"]
+
+                state_last = state_ref.get("last_active")
+                if isinstance(state_last, (int, float)) and not isinstance(state_last, bool):
+                    self._last_active_ts = max(self._last_active_ts, float(state_last))
+                else:
+                    state_ref["last_active"] = self._last_active_ts
+
+                state_ref.setdefault("keepalive_lease_until", self.lifecycle.get("keepalive_lease_until"))
+
+    def is_keepalive_lease_active(self, now_ts: float | None = None) -> bool:
+        """Return True when a keepalive lease is active, clearing expired leases."""
+        now = time.time() if now_ts is None else float(now_ts)
+        with self._lock:
+            lease_until_ts = _parse_iso(self.lifecycle.get("keepalive_lease_until"))
+            if lease_until_ts is not None and now >= lease_until_ts:
+                self.lifecycle["keepalive_lease_until"] = None
+                if self._state_ref is not None:
+                    self._state_ref["keepalive_lease_until"] = None
+                return False
+            return lease_until_ts is not None
+
+    def touch_activity(self, now_ts: float | None = None) -> None:
+        """Reset idle timer and mirror activity timestamp to any bound host state dict."""
+        now = time.time() if now_ts is None else float(now_ts)
+        with self._lock:
+            self._last_active_ts = max(self._last_active_ts, now)
+            if self._state_ref is not None:
+                cur_la = self._state_ref.get("last_active")
+                if isinstance(cur_la, (int, float)) and not isinstance(cur_la, bool):
+                    self._state_ref["last_active"] = max(float(cur_la), self._last_active_ts)
+                else:
+                    self._state_ref["last_active"] = self._last_active_ts
+            self.lifecycle["idle_seconds"] = 0
+
+    def _publish_heartbeat_safe(self) -> None:
+        try:
+            self.publish_heartbeat()
+        except Exception as exc:
+            self._log(f"Heartbeat publish error after action: {exc}")
+
+    def _sync_from_state_ref_locked(self) -> None:
+        if self._state_ref is None:
+            return
+        last_act = self._state_ref.get("last_active")
+        if isinstance(last_act, (int, float)) and not isinstance(last_act, bool):
+            self._last_active_ts = max(self._last_active_ts, float(last_act))
+        state_tm = self._state_ref.get("idle_timeout_minutes")
+        if isinstance(state_tm, int) and not isinstance(state_tm, bool):
+            self.lifecycle["idle_timeout_minutes"] = max(0, min(360, state_tm))
+
+    def _sync_running_locked(self) -> int:
+        if self._jobs_ref is not None:
+            vals = list(self._jobs_ref.values())
+            self.workload["running"] = sum(1 for j in vals if j.get("status") == "running")
+            self.workload["queued"] = sum(1 for j in vals if j.get("status") == "queued")
+            self.workload["succeeded"] = sum(1 for j in vals if j.get("status") == "succeeded")
+            self.workload["failed"] = sum(1 for j in vals if j.get("status") == "failed")
+        if self._state_ref is not None:
+            state_running = self._state_ref.get("active_jobs")
+            if isinstance(state_running, int) and not isinstance(state_running, bool):
+                clamped_state_running = max(0, state_running)
+                if self._jobs_ref is None:
+                    self.workload["running"] = clamped_state_running
+                else:
+                    self.workload["running"] = max(int(self.workload.get("running", 0)), clamped_state_running)
+        return int(self.workload.get("running", 0))
+
     def build_snapshot(self, *, record_timeseries: bool = False) -> dict[str, Any]:
         now = time.time()
         hw = self._hardware_collector()
         with self._lock:
-            if self._state_ref and isinstance(self._state_ref.get("last_active"), (int, float)):
-                self._last_active_ts = max(self._last_active_ts, float(self._state_ref["last_active"]))
+            self._sync_from_state_ref_locked()
+            running = self._sync_running_locked()
+            lease_active = self.is_keepalive_lease_active(now)
+
+            gpu_hw = hw.get("gpu") if isinstance(hw, dict) else None
+            if isinstance(gpu_hw, dict) and gpu_hw.get("available"):
+                util = gpu_hw.get("util_gpu_pct")
+                self._last_gpu_util_pct = float(util) if isinstance(util, (int, float)) and not isinstance(util, bool) else None
+            else:
+                self._last_gpu_util_pct = None
+            gpu_busy = self._last_gpu_util_pct is not None and self._last_gpu_util_pct >= self.gpu_active_util_pct
+
+            if running > 0 or gpu_busy or lease_active:
+                self._last_active_ts = max(self._last_active_ts, now)
+                if self._state_ref is not None:
+                    cur_la = self._state_ref.get("last_active")
+                    if isinstance(cur_la, (int, float)) and not isinstance(cur_la, bool):
+                        self._state_ref["last_active"] = max(float(cur_la), now)
+                    else:
+                        self._state_ref["last_active"] = now
+
             idle_sec = int(max(0.0, now - self._last_active_ts))
             self.lifecycle["idle_seconds"] = idle_sec
-            lease_until_ts = _parse_iso(self.lifecycle.get("keepalive_lease_until"))
-            if lease_until_ts is not None and now >= lease_until_ts:
-                self.lifecycle["keepalive_lease_until"] = None
-
-            if self._jobs_ref is not None:
-                vals = list(self._jobs_ref.values())
-                self.workload["running"] = sum(1 for j in vals if j.get("status") == "running")
-                self.workload["queued"] = sum(1 for j in vals if j.get("status") == "queued")
-                self.workload["succeeded"] = sum(1 for j in vals if j.get("status") == "succeeded")
-                self.workload["failed"] = sum(1 for j in vals if j.get("status") == "failed")
 
             hw_copy = dict(hw)
             hw_copy["drive"] = {
@@ -1117,11 +1212,8 @@ class ColabAgent:
 
         # --- 4.1 lifecycle.* ---
         if action == "lifecycle.keepalive":
-            with self._lock:
-                self._last_active_ts = now
-                if self._state_ref is not None:
-                    self._state_ref["last_active"] = now
-                self.lifecycle["idle_seconds"] = 0
+            self.touch_activity(now)
+            self._publish_heartbeat_safe()
             return HTTPStatus.OK, self._make_ack(
                 cmd_id, action, "succeeded", "已重置空闲计时器。", data={"idle_seconds": 0}, accepted_at=accepted_at
             )
@@ -1135,7 +1227,12 @@ class ColabAgent:
             with self._lock:
                 until = None if dur == 0 else _utc_iso(now + dur * 60)
                 self.lifecycle["keepalive_lease_until"] = until
-                self._last_active_ts = now
+                self._last_active_ts = max(self._last_active_ts, now)
+                self.lifecycle["idle_seconds"] = 0
+                if self._state_ref is not None:
+                    self._state_ref["keepalive_lease_until"] = until
+                    self._state_ref["last_active"] = max(float(self._state_ref.get("last_active") or 0), now)
+            self._publish_heartbeat_safe()
             msg = "已取消保活租约。" if dur == 0 else f"已开启 {dur} 分钟保活租约（到期 {until}）。"
             return HTTPStatus.OK, self._make_ack(
                 cmd_id, action, "succeeded", msg, data={"keepalive_lease_until": until}, accepted_at=accepted_at
@@ -1161,6 +1258,7 @@ class ColabAgent:
                     self.lifecycle["auto_shutdown_after_batch"] = auto_sd
                 cur_tm = self.lifecycle["idle_timeout_minutes"]
                 cur_auto = self.lifecycle["auto_shutdown_after_batch"]
+            self._publish_heartbeat_safe()
             desc = "已禁用自动空闲释放" if cur_tm == 0 else f"空闲释放阈值已更新为 {cur_tm} 分钟"
             return HTTPStatus.OK, self._make_ack(
                 cmd_id,
@@ -1186,6 +1284,7 @@ class ColabAgent:
                 deadline = None if after is None else _utc_iso(now + after * 60)
                 self.lifecycle["deadline_shutdown_at"] = deadline
                 self.lifecycle["deadline_mode"] = mode
+            self._publish_heartbeat_safe()
             msg = "已取消会话死线。" if deadline is None else f"已设置会话死线 {deadline}（模式={mode}）。"
             return HTTPStatus.OK, self._make_ack(
                 cmd_id, action, "succeeded", msg, data={"deadline_shutdown_at": deadline, "mode": mode}, accepted_at=accepted_at
@@ -1581,6 +1680,8 @@ class ColabAgent:
 
     def _schedule_safe_shutdown(self, *, reason: str) -> None:
         with self._lock:
+            if self._state_ref is not None:
+                self._state_ref["shutdown_requested"] = True
             if self.lifecycle.get("state") in ("shutting_down", "terminated"):
                 return
             self.lifecycle["state"] = "shutting_down"
@@ -1645,17 +1746,32 @@ class ColabAgent:
         with self._lock:
             if self.lifecycle.get("state") != "running":
                 return
+            self._sync_from_state_ref_locked()
+            running = self._sync_running_locked()
             deadline_ts = _parse_iso(self.lifecycle.get("deadline_shutdown_at"))
             deadline_mode = self.lifecycle.get("deadline_mode", "drain")
+            idle_timeout_min = int(self.lifecycle.get("idle_timeout_minutes") or 0)
+            last_active_ts = float(self._last_active_ts)
+            lease_active = self.is_keepalive_lease_active(now)
+            gpu_busy = self._last_gpu_util_pct is not None and self._last_gpu_util_pct >= self.gpu_active_util_pct
         if deadline_ts is not None and now >= deadline_ts:
             if deadline_mode == "immediate":
                 self._schedule_safe_shutdown(reason="deadline_immediate")
             else:
                 with self._lock:
                     self.lifecycle["drain_requested"] = True
-                    running = int(self.workload.get("running", 0))
+                    running = self._sync_running_locked()
                 if running == 0:
                     self._schedule_safe_shutdown(reason="deadline_drain")
+            return
+        if idle_timeout_min > 0 and running == 0 and not gpu_busy and not lease_active:
+            idle_sec = max(0.0, now - last_active_ts)
+            if idle_sec >= idle_timeout_min * 60.0:
+                self._log(
+                    f"Idle timeout reached ({idle_sec / 60.0:.1f}m >= {idle_timeout_min}m; "
+                    f"running=0, gpu_util={self._last_gpu_util_pct}); initiating safe shutdown."
+                )
+                self._schedule_safe_shutdown(reason="idle_timeout")
 
     def start_background_workers(self) -> None:
         if self._workers:
@@ -1769,8 +1885,7 @@ class ColabAgent:
         from fastapi import Header, HTTPException, Request  # type: ignore
         from fastapi.responses import JSONResponse  # type: ignore
 
-        self._state_ref = state_ref
-        self._jobs_ref = jobs_ref
+        self.attach_state(state_ref=state_ref, jobs_ref=jobs_ref)
         if api_key_getter:
             k = (api_key_getter() or "").strip()
             if k:
